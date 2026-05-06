@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: big-ten-sports
+    runtime: node
+    buildCommand: npm install && npm run build:client
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+    autoDeploy: true
