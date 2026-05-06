@@ -772,6 +772,33 @@ img { display: block; }
   to   { transform: translateY(0); }
 }
 
+/* ── Conversation card ───────────────────────────────────── */
+.convo-card {
+  margin: 0 12px 12px;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  padding: 14px 16px;
+}
+.convo-card-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-3);
+  font-style: italic;
+  border-left: 3px solid var(--primary);
+  padding-left: 10px;
+  margin-bottom: 10px;
+}
+.convo-card-body {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.04);
+  border-radius: var(--radius-sm);
+}
+
 /* ── Desktop centering helper ────────────────────────────── */
 @media (min-width: 480px) {
   body { background: #050710; }

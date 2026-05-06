@@ -3,6 +3,7 @@ import { api } from '../api/client.js';
 import LoadingSpinner from './LoadingSpinner.jsx';
 import ScoreCard from './ScoreCard.jsx';
 import Briefing from './Briefing.jsx';
+import ConversationCard from './ConversationCard.jsx';
 
 function greeting() {
   const h = new Date().getHours();
@@ -17,15 +18,12 @@ function isFav(game, favIds) {
 }
 
 export default function Dashboard({ sport, favoriteTeamIds, onGameSelect }) {
-  const { data, loading, error, reload } = useApi(
-    () => api.scores(sport),
-    [sport]
-  );
+  const { data, loading, error, reload } = useApi(() => api.scores(sport), [sport]);
+  const { data: teamsList } = useApi(() => api.teams(), []);
 
-  const favGames = data?.games?.filter(g => isFav(g, favoriteTeamIds)) ?? [];
+  const favGames   = data?.games?.filter(g => isFav(g, favoriteTeamIds)) ?? [];
   const otherGames = data?.games?.filter(g => !isFav(g, favoriteTeamIds)) ?? [];
-
-  const label = sport === 'football' ? '🏈 Football' : '🏀 Basketball';
+  const label      = sport === 'football' ? '🏈 Football' : '🏀 Basketball';
 
   if (loading) return <LoadingSpinner label={`Loading ${label}…`} />;
 
@@ -51,6 +49,15 @@ export default function Dashboard({ sport, favoriteTeamIds, onGameSelect }) {
 
       {data && <Briefing games={data.games} lastUpdated={data.lastUpdated} stale={data.stale} />}
 
+      {favoriteTeamIds?.length > 0 && (
+        <ConversationCard
+          sport={sport}
+          favoriteTeamIds={favoriteTeamIds}
+          scoresData={data}
+          teamsList={teamsList}
+        />
+      )}
+
       {favGames.length > 0 && (
         <>
           <div className="section-header">
@@ -58,12 +65,7 @@ export default function Dashboard({ sport, favoriteTeamIds, onGameSelect }) {
             {data?.week?.number && <span className="section-meta">Week {data.week.number}</span>}
           </div>
           {favGames.map(game => (
-            <ScoreCard
-              key={game.id}
-              game={game}
-              isFavorite
-              onClick={onGameSelect}
-            />
+            <ScoreCard key={game.id} game={game} isFavorite onClick={onGameSelect} />
           ))}
         </>
       )}
