@@ -2,7 +2,7 @@ services:
   - type: web
     name: big-ten-sports
     runtime: node
-    buildCommand: npm install && npm run build:client
+    buildCommand: npm install && cd client && npm install && npm run build
     startCommand: node server.js
     envVars:
       - key: NODE_ENV

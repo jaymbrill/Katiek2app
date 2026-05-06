@@ -14,9 +14,20 @@ app.use(express.json());
 app.use('/api', apiRouter);
 
 const clientDist = path.join(__dirname, 'client', 'dist');
+const fs = require('fs');
+
+if (!fs.existsSync(clientDist)) {
+  console.error(`ERROR: client/dist not found at ${clientDist}`);
+  console.error('Run: cd client && npm install && npm run build');
+}
+
 app.use(express.static(clientDist));
 app.get('*', (req, res) => {
-  res.sendFile(path.join(clientDist, 'index.html'));
+  const indexPath = path.join(clientDist, 'index.html');
+  if (!fs.existsSync(indexPath)) {
+    return res.status(503).send('App not built. Run: cd client && npm install && npm run build');
+  }
+  res.sendFile(indexPath);
 });
 
 app.listen(PORT, () => {
