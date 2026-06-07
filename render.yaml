@@ -8,3 +8,10 @@ services:
       - key: NODE_ENV
         value: production
     autoDeploy: true
+
+staticSites:
+  - name: r2r2r-companion
+    buildCommand: cd r2r2r-app && npm install --legacy-peer-deps && npm run build:web
+    staticPublishPath: r2r2r-app/dist
+    pullRequestPreviewsEnabled: true
+    autoDeploy: true
