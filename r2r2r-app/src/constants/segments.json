@@ -1,0 +1,74 @@
+[
+  {
+    "id": "south_rim_to_ba_cg",
+    "name": "South Rim TH → Bright Angel CG",
+    "miles": 7.2,
+    "elevationChangeFt": -4800,
+    "baseTimeMinutes": 150,
+    "fromWaypointId": "south_rim",
+    "toWaypointId": "ba_cg"
+  },
+  {
+    "id": "ba_cg_to_phantom",
+    "name": "Bright Angel CG → Phantom Ranch",
+    "miles": 1.5,
+    "elevationChangeFt": 0,
+    "baseTimeMinutes": 30,
+    "fromWaypointId": "ba_cg",
+    "toWaypointId": "phantom"
+  },
+  {
+    "id": "phantom_to_cottonwood",
+    "name": "Phantom Ranch → Cottonwood CG",
+    "miles": 7.0,
+    "elevationChangeFt": 4100,
+    "baseTimeMinutes": 210,
+    "fromWaypointId": "phantom",
+    "toWaypointId": "cottonwood"
+  },
+  {
+    "id": "cottonwood_to_north_rim",
+    "name": "Cottonwood CG → North Rim TH",
+    "miles": 7.0,
+    "elevationChangeFt": 2000,
+    "baseTimeMinutes": 180,
+    "fromWaypointId": "cottonwood",
+    "toWaypointId": "north_rim"
+  },
+  {
+    "id": "north_rim_turnaround",
+    "name": "North Rim TH (turnaround)",
+    "miles": 0,
+    "elevationChangeFt": 0,
+    "baseTimeMinutes": 45,
+    "fromWaypointId": "north_rim",
+    "toWaypointId": "north_rim"
+  },
+  {
+    "id": "north_rim_to_cottonwood",
+    "name": "North Rim TH → Cottonwood CG",
+    "miles": 7.0,
+    "elevationChangeFt": -2000,
+    "baseTimeMinutes": 150,
+    "fromWaypointId": "north_rim",
+    "toWaypointId": "cottonwood"
+  },
+  {
+    "id": "cottonwood_to_phantom_return",
+    "name": "Cottonwood CG → Phantom Ranch",
+    "miles": 7.0,
+    "elevationChangeFt": -4100,
+    "baseTimeMinutes": 180,
+    "fromWaypointId": "cottonwood",
+    "toWaypointId": "phantom"
+  },
+  {
+    "id": "phantom_to_south_rim",
+    "name": "Phantom Ranch → South Rim TH",
+    "miles": 9.5,
+    "elevationChangeFt": 4800,
+    "baseTimeMinutes": 255,
+    "fromWaypointId": "phantom",
+    "toWaypointId": "south_rim"
+  }
+]

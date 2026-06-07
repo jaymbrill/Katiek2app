@@ -1,0 +1,47 @@
+[
+  {
+    "id": "ba_cg",
+    "name": "Bright Angel Campground",
+    "mileFromSouthTH": 9.2,
+    "critical": false,
+    "status": "OPEN",
+    "lastVerified": "2025-01-01",
+    "notes": "Reliable water source near Colorado River"
+  },
+  {
+    "id": "phantom",
+    "name": "Phantom Ranch",
+    "mileFromSouthTH": 10.7,
+    "critical": true,
+    "status": "OPEN",
+    "lastVerified": "2025-01-01",
+    "notes": "Critical source. Also has canteen for cold drinks."
+  },
+  {
+    "id": "ribbon_falls",
+    "name": "Ribbon Falls (natural)",
+    "mileFromSouthTH": 17.7,
+    "critical": false,
+    "status": "OPEN",
+    "lastVerified": "2025-01-01",
+    "notes": "Natural spring. Filter required."
+  },
+  {
+    "id": "cottonwood",
+    "name": "Cottonwood Campground",
+    "mileFromSouthTH": 21.7,
+    "critical": true,
+    "status": "OPEN",
+    "lastVerified": "2025-01-01",
+    "notes": "Critical source on North Kaibab corridor"
+  },
+  {
+    "id": "north_rim",
+    "name": "North Rim Trailhead",
+    "mileFromSouthTH": 28.5,
+    "critical": true,
+    "status": "SEASONAL",
+    "lastVerified": "2025-01-01",
+    "notes": "SEASONAL: Water off October 15 – May 15 annually"
+  }
+]

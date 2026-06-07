@@ -1,0 +1,121 @@
+[
+  {
+    "id": "satellite_comm",
+    "name": "Satellite communicator",
+    "tier": "REQUIRED",
+    "notes": "Garmin inReach Mini or SPOT Gen4",
+    "weightOz": 3.5
+  },
+  {
+    "id": "emergency_bivy",
+    "name": "Emergency bivy",
+    "tier": "REQUIRED",
+    "notes": "SOL Escape or equivalent",
+    "weightOz": 3.8
+  },
+  {
+    "id": "headlamp",
+    "name": "Headlamp + spare batteries",
+    "tier": "REQUIRED",
+    "notes": "You will hike in the dark",
+    "weightOz": 3.0
+  },
+  {
+    "id": "water_filter",
+    "name": "Water filter or purification tabs",
+    "tier": "REQUIRED",
+    "notes": "Backup for source failures",
+    "weightOz": 2.0
+  },
+  {
+    "id": "first_aid",
+    "name": "First aid kit",
+    "tier": "REQUIRED",
+    "notes": "Blister treatment critical",
+    "weightOz": 6.0
+  },
+  {
+    "id": "sun_hoody",
+    "name": "Sun hoody",
+    "tier": "REQUIRED",
+    "notes": "Not optional in Inner Gorge",
+    "weightOz": 5.0
+  },
+  {
+    "id": "hat",
+    "name": "Hat with brim",
+    "tier": "REQUIRED",
+    "notes": "",
+    "weightOz": 3.0
+  },
+  {
+    "id": "sunscreen",
+    "name": "Sunscreen SPF 50+",
+    "tier": "REQUIRED",
+    "notes": "Reapply every 2 hours",
+    "weightOz": 3.0
+  },
+  {
+    "id": "electrolytes",
+    "name": "Electrolytes (≥20 doses)",
+    "tier": "REQUIRED",
+    "notes": "Nuun, SaltStick, or equiv.",
+    "weightOz": 3.5
+  },
+  {
+    "id": "emergency_cash",
+    "name": "Emergency cash $60+",
+    "tier": "REQUIRED",
+    "notes": "Phantom Ranch rescue fee",
+    "weightOz": 0.5
+  },
+  {
+    "id": "trekking_poles",
+    "name": "Trekking poles",
+    "tier": "STRONGLY_RECOMMENDED",
+    "notes": "Major knee saver on descent",
+    "weightOz": 16
+  },
+  {
+    "id": "microspikes",
+    "name": "Microspikes",
+    "tier": "STRONGLY_RECOMMENDED",
+    "notes": "Required if shoulder season",
+    "weightOz": 12
+  },
+  {
+    "id": "buff",
+    "name": "Buff/neck gaiter",
+    "tier": "STRONGLY_RECOMMENDED",
+    "notes": "Wet it at water sources",
+    "weightOz": 1.5
+  },
+  {
+    "id": "gaiters",
+    "name": "Gaiters",
+    "tier": "STRONGLY_RECOMMENDED",
+    "notes": "Keeps gravel out on descent",
+    "weightOz": 4.0
+  },
+  {
+    "id": "trekking_food",
+    "name": "High-calorie food (≥4000 kcal)",
+    "tier": "OPTIONAL",
+    "notes": "Gels, bars, real food for Phantom",
+    "weightOz": 32
+  },
+  {
+    "id": "extra_socks",
+    "name": "Extra socks (1 pair)",
+    "tier": "OPTIONAL",
+    "notes": "Change at Phantom Ranch",
+    "weightOz": 2.0
+  },
+  {
+    "id": "rain_jacket",
+    "name": "Ultralight rain jacket",
+    "tier": "OPTIONAL",
+    "notes": "Monsoon season July–Sep",
+    "weightOz": 6.0
+  }
+]
