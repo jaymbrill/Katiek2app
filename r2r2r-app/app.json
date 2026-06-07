@@ -25,7 +25,9 @@
       "permissions": ["RECEIVE_BOOT_COMPLETED", "VIBRATE"]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "output": "single",
+      "bundler": "metro"
     },
     "scheme": "r2r2r",
     "plugins": [

@@ -15,3 +15,7 @@ staticSites:
     staticPublishPath: r2r2r-app/dist
     pullRequestPreviewsEnabled: true
     autoDeploy: true
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
