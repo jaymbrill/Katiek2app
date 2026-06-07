@@ -1,26 +1,27 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Guard all notification calls — expo-notifications has no web implementation
+if (Platform.OS !== 'web') {
+  const Notifications = require('expo-notifications');
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 export default function RootLayout() {
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     async function setupNotifications() {
-      if (Platform.OS !== 'web') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        if (status !== 'granted') return;
-      }
+      const Notifications = require('expo-notifications');
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') return;
     }
     setupNotifications();
   }, []);

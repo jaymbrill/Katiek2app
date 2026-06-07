@@ -2,12 +2,9 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
-// Resolve .web.ts/.web.tsx before .ts/.tsx so platform shims take precedence on web
-config.resolver.sourceExts = [
-  'web.tsx',
-  'web.ts',
-  'web.js',
-  ...config.resolver.sourceExts,
-];
+// Metro already resolves platform-specific files (foo.web.ts before foo.ts)
+// when building for web — no extra sourceExts needed.
+// Just ensure JSON modules resolve correctly.
+config.resolver.assetExts = config.resolver.assetExts.filter((ext) => ext !== 'svg');
 
 module.exports = config;
