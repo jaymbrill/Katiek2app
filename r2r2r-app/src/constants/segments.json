@@ -1,11 +1,11 @@
 [
   {
-    "id": "south_rim_to_ba_cg",
-    "name": "South Rim TH → Bright Angel CG",
+    "id": "south_kaibab_to_ba_cg",
+    "name": "South Kaibab TH → Bright Angel CG",
     "miles": 7.2,
     "elevationChangeFt": -4800,
     "baseTimeMinutes": 150,
-    "fromWaypointId": "south_rim",
+    "fromWaypointId": "south_kaibab_th",
     "toWaypointId": "ba_cg"
   },
   {
@@ -63,12 +63,12 @@
     "toWaypointId": "phantom"
   },
   {
-    "id": "phantom_to_south_rim",
-    "name": "Phantom Ranch → South Rim TH",
+    "id": "phantom_to_bright_angel_th",
+    "name": "Phantom Ranch → Bright Angel TH",
     "miles": 9.5,
     "elevationChangeFt": 4800,
     "baseTimeMinutes": 255,
     "fromWaypointId": "phantom",
-    "toWaypointId": "south_rim"
+    "toWaypointId": "bright_angel_th"
   }
 ]
