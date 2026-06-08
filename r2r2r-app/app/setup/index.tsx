@@ -21,10 +21,10 @@ import {
 
 const FITNESS_LEVELS: FitnessLevel[] = ['BEGINNER', 'INTERMEDIATE', 'STRONG', 'ELITE'];
 const FITNESS_LABELS: Record<FitnessLevel, string> = {
-  BEGINNER: 'Beginner (~32h)',
-  INTERMEDIATE: 'Intermediate (~26h)',
-  STRONG: 'Strong (~21h)',
-  ELITE: 'Elite (~18h)',
+  BEGINNER: 'Beginner (~24h)',
+  INTERMEDIATE: 'Intermediate (~18h)',
+  STRONG: 'Strong (~14h)',
+  ELITE: 'Elite (~9h)',
 };
 
 function generateId() {
@@ -237,10 +237,10 @@ export default function SetupScreen() {
                 {FITNESS_LABELS[level]}
               </Text>
               <Text style={styles.fitnessDesc}>
-                {level === 'BEGINNER' && 'New to big canyon days, occasional hiking'}
-                {level === 'INTERMEDIATE' && 'Regular long hikes, some canyon experience'}
-                {level === 'STRONG' && 'Consistent training, multiple canyon trips'}
-                {level === 'ELITE' && 'Ultra runner / elite mountain athlete'}
+                {level === 'BEGINNER' && 'Strong hiker, power-walking pace, first big canyon day'}
+                {level === 'INTERMEDIATE' && 'Fit athlete, run-hike mix, first R2R2R attempt'}
+                {level === 'STRONG' && 'Experienced trail runner, 10–15 ultras or canyon trips'}
+                {level === 'ELITE' && 'Competitive ultra runner, sub-10h canyon days'}
               </Text>
             </View>
           </TouchableOpacity>

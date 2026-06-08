@@ -1,18 +1,23 @@
 import type { FitnessLevel, ScheduledSegment, TripDirection } from './types';
 import segmentsData from '../constants/segments.json';
 
+// Multipliers calibrated against FKT data, CTS coaching guides, and trip reports:
+// ELITE  ~9h  (sub-10h = community "elite" threshold; iRunFar, Outside Online)
+// STRONG ~14h  (experienced trail runner; CTS: "11–15h for experienced runners")
+// INTERMEDIATE ~18h (fit first-timers; CTS: "15–20h for first-time runners")
+// BEGINNER ~24h (strong hiker; Outside Online: "18–24h for non-runners")
 export const PACE_MULTIPLIERS: Record<FitnessLevel, number> = {
-  BEGINNER: 1.5,
-  INTERMEDIATE: 1.2,
-  STRONG: 1.0,
-  ELITE: 0.85,
+  BEGINNER: 1.75,
+  INTERMEDIATE: 1.30,
+  STRONG: 1.00,
+  ELITE: 0.65,
 };
 
 export const ESTIMATED_HOURS: Record<FitnessLevel, number> = {
-  BEGINNER: 32,
-  INTERMEDIATE: 26,
-  STRONG: 21,
-  ELITE: 18,
+  BEGINNER: 24,
+  INTERMEDIATE: 18,
+  STRONG: 14,
+  ELITE: 9,
 };
 
 export function generateScheduledSegments(

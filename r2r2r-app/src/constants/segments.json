@@ -2,36 +2,36 @@
   {
     "id": "south_kaibab_to_ba_cg",
     "name": "South Kaibab TH → Bright Angel CG",
-    "miles": 7.2,
-    "elevationChangeFt": -4800,
-    "baseTimeMinutes": 150,
+    "miles": 7.0,
+    "elevationChangeFt": -4780,
+    "baseTimeMinutes": 105,
     "fromWaypointId": "south_kaibab_th",
     "toWaypointId": "ba_cg"
   },
   {
     "id": "ba_cg_to_phantom",
     "name": "Bright Angel CG → Phantom Ranch",
-    "miles": 1.5,
+    "miles": 0.5,
     "elevationChangeFt": 0,
-    "baseTimeMinutes": 30,
+    "baseTimeMinutes": 15,
     "fromWaypointId": "ba_cg",
     "toWaypointId": "phantom"
   },
   {
     "id": "phantom_to_cottonwood",
     "name": "Phantom Ranch → Cottonwood CG",
-    "miles": 7.0,
-    "elevationChangeFt": 4100,
-    "baseTimeMinutes": 210,
+    "miles": 7.2,
+    "elevationChangeFt": 1600,
+    "baseTimeMinutes": 110,
     "fromWaypointId": "phantom",
     "toWaypointId": "cottonwood"
   },
   {
     "id": "cottonwood_to_north_rim",
     "name": "Cottonwood CG → North Rim TH",
-    "miles": 7.0,
-    "elevationChangeFt": 2000,
-    "baseTimeMinutes": 180,
+    "miles": 6.8,
+    "elevationChangeFt": 3620,
+    "baseTimeMinutes": 145,
     "fromWaypointId": "cottonwood",
     "toWaypointId": "north_rim"
   },
@@ -40,25 +40,25 @@
     "name": "North Rim TH (turnaround)",
     "miles": 0,
     "elevationChangeFt": 0,
-    "baseTimeMinutes": 45,
+    "baseTimeMinutes": 30,
     "fromWaypointId": "north_rim",
     "toWaypointId": "north_rim"
   },
   {
     "id": "north_rim_to_cottonwood",
     "name": "North Rim TH → Cottonwood CG",
-    "miles": 7.0,
-    "elevationChangeFt": -2000,
-    "baseTimeMinutes": 150,
+    "miles": 6.8,
+    "elevationChangeFt": -3620,
+    "baseTimeMinutes": 95,
     "fromWaypointId": "north_rim",
     "toWaypointId": "cottonwood"
   },
   {
     "id": "cottonwood_to_phantom_return",
     "name": "Cottonwood CG → Phantom Ranch",
-    "miles": 7.0,
-    "elevationChangeFt": -4100,
-    "baseTimeMinutes": 180,
+    "miles": 7.2,
+    "elevationChangeFt": -1600,
+    "baseTimeMinutes": 90,
     "fromWaypointId": "cottonwood",
     "toWaypointId": "phantom"
   },
@@ -66,8 +66,8 @@
     "id": "phantom_to_bright_angel_th",
     "name": "Phantom Ranch → Bright Angel TH",
     "miles": 9.5,
-    "elevationChangeFt": 4800,
-    "baseTimeMinutes": 255,
+    "elevationChangeFt": 4380,
+    "baseTimeMinutes": 220,
     "fromWaypointId": "phantom",
     "toWaypointId": "bright_angel_th"
   }
