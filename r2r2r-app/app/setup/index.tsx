@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTripStore } from '../../src/store/tripStore';
+import { useStravaStore } from '../../src/store/stravaStore';
 import type { FitnessLevel, TripDirection } from '../../src/lib/types';
 import {
   generateScheduledSegments,
@@ -47,15 +48,25 @@ function isFutureDate(date: Date): boolean {
 export default function SetupScreen() {
   const router = useRouter();
   const { saveTrip } = useTripStore();
+  const { analysis } = useStravaStore();
 
   const [tripDate, setTripDate] = useState('');
   const [startTime, setStartTime] = useState('04:00');
   const [direction, setDirection] = useState<TripDirection>('S_TO_N');
   const [fitnessLevel, setFitnessLevel] = useState<FitnessLevel>('STRONG');
+  const [stravaApplied, setStravaApplied] = useState(false);
   const [bodyWeight, setBodyWeight] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saveError, setSaveError] = useState('');
+
+  // Pre-fill fitness level from Strava analysis the first time it's available
+  useEffect(() => {
+    if (analysis && !stravaApplied) {
+      setFitnessLevel(analysis.suggestedLevel);
+      setStravaApplied(true);
+    }
+  }, [analysis]);
 
   function validate(): boolean {
     const newErrors: Record<string, string> = {};
@@ -193,6 +204,19 @@ export default function SetupScreen() {
           ))}
         </View>
       </View>
+
+      {/* Strava suggestion banner */}
+      {analysis && (
+        <View style={styles.stravaBanner}>
+          <Text style={styles.stravaBannerTitle}>Strava suggests: {analysis.suggestedLevel.charAt(0) + analysis.suggestedLevel.slice(1).toLowerCase()}</Text>
+          <Text style={styles.stravaBannerSub}>{analysis.reasoning}</Text>
+          {fitnessLevel !== analysis.suggestedLevel && (
+            <TouchableOpacity onPress={() => setFitnessLevel(analysis.suggestedLevel)}>
+              <Text style={styles.stravaBannerApply}>Apply suggestion</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {/* Fitness */}
       <View style={styles.section}>
@@ -360,6 +384,17 @@ const styles = StyleSheet.create({
   previewRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   previewLabel: { color: '#64748b', fontSize: 14, flex: 1, marginRight: 8 },
   previewValue: { color: '#f1f5f9', fontSize: 14, fontWeight: '700' },
+  stravaBanner: {
+    backgroundColor: '#1a1200',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FC4C02',
+  },
+  stravaBannerTitle: { color: '#FC4C02', fontSize: 15, fontWeight: '700', marginBottom: 4 },
+  stravaBannerSub: { color: '#94a3b8', fontSize: 13, lineHeight: 18, marginBottom: 6 },
+  stravaBannerApply: { color: '#FC4C02', fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
   saveError: { color: '#ef4444', fontSize: 14, textAlign: 'center', marginBottom: 12 },
   createBtn: {
     backgroundColor: '#1d4ed8',

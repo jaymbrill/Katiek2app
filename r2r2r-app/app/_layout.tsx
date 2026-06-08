@@ -65,7 +65,10 @@ export default function RootLayout() {
           name="tracker/checkin"
           options={{ title: 'Check In', presentation: 'modal' }}
         />
-
+        <Stack.Screen
+          name="strava-callback/index"
+          options={{ headerShown: false }}
+        />
       </Stack>
     </>
   );
