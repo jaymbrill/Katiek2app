@@ -30,7 +30,7 @@
     "id": "cottonwood_to_north_rim",
     "name": "Cottonwood CG → North Rim TH",
     "miles": 6.8,
-    "elevationChangeFt": 3620,
+    "elevationChangeFt": 4160,
     "baseTimeMinutes": 145,
     "fromWaypointId": "cottonwood",
     "toWaypointId": "north_rim"
@@ -48,7 +48,7 @@
     "id": "north_rim_to_cottonwood",
     "name": "North Rim TH → Cottonwood CG",
     "miles": 6.8,
-    "elevationChangeFt": -3620,
+    "elevationChangeFt": -4160,
     "baseTimeMinutes": 95,
     "fromWaypointId": "north_rim",
     "toWaypointId": "cottonwood"
