@@ -1,20 +1,31 @@
 import type { FitnessLevel } from './types';
 import type { StravaActivity } from './strava';
 
-// Activities that involve sustained effort over terrain similar to R2R2R
-const QUALIFYING_TYPES = new Set([
-  'Run', 'TrailRun', 'Hike', 'Walk', 'VirtualRun',
+// Activities excluded from analysis — skill-based or non-aerobic
+const EXCLUDED_TYPES = new Set([
+  'Golf', 'Yoga', 'WeightTraining', 'Crossfit', 'Stretching',
+  'StandUpPaddling', 'Surfing', 'Windsurf', 'Kitesurf',
 ]);
 
-const MIN_DISTANCE_M = 8047;  // 5 miles
-const MIN_ELEVATION_M = 300;  // ~1000 ft
+// Minimum thresholds — low bar so cyclists/skiers/climbers qualify too
+const MIN_DISTANCE_M = 3000;   // ~2 miles (or 0 for elevation-only sports like climbing)
+const MIN_ELEVATION_M = 150;   // ~500 ft
+const MIN_MOVING_TIME_S = 600; // 10 minutes
+
+// Sports where elevation is the primary metric (distance often logged as 0 in Strava)
+const ELEVATION_PRIMARY = new Set([
+  'RockClimbing', 'IceClimbing', 'AlpineSkiing', 'BackcountrySki',
+  'NordicSki', 'Snowboard', 'Snowshoe',
+]);
 
 export interface StravaAnalysisResult {
   suggestedLevel: FitnessLevel;
   qualifyingCount: number;
+  totalActivities: number;
   medianVerticalSpeedMperHr: number;
   confidence: 'HIGH' | 'MEDIUM' | 'LOW';
   reasoning: string;
+  topSportTypes: string[];
 }
 
 function median(nums: number[]): number {
@@ -24,57 +35,80 @@ function median(nums: number[]): number {
   return s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
 }
 
+function topTypes(activities: StravaActivity[]): string[] {
+  const counts: Record<string, number> = {};
+  for (const a of activities) counts[a.sport_type] = (counts[a.sport_type] ?? 0) + 1;
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([type]) => type);
+}
+
 export function analyzeActivities(activities: StravaActivity[]): StravaAnalysisResult {
-  const qualifying = activities.filter(
-    (a) =>
-      QUALIFYING_TYPES.has(a.sport_type) &&
-      a.distance >= MIN_DISTANCE_M &&
-      a.total_elevation_gain >= MIN_ELEVATION_M &&
-      a.moving_time > 0
-  );
+  const total = activities.length;
+
+  const qualifying = activities.filter((a) => {
+    if (EXCLUDED_TYPES.has(a.sport_type)) return false;
+    if (a.moving_time < MIN_MOVING_TIME_S) return false;
+    if (a.total_elevation_gain < MIN_ELEVATION_M) return false;
+    // For climbing/ski sports, don't require distance
+    if (ELEVATION_PRIMARY.has(a.sport_type)) return true;
+    return a.distance >= MIN_DISTANCE_M;
+  });
+
+  const topTypes_ = topTypes(qualifying);
 
   if (!qualifying.length) {
     return {
       suggestedLevel: 'INTERMEDIATE',
       qualifyingCount: 0,
+      totalActivities: total,
       medianVerticalSpeedMperHr: 0,
       confidence: 'LOW',
-      reasoning: 'No qualifying hike/run activities (5+ mi, 1000+ ft gain) found in the past year. Defaulting to Intermediate.',
+      reasoning: `No activities with 500+ ft gain found in the past year across ${total} total activities. Defaulting to Intermediate.`,
+      topSportTypes: topTypes(activities),
     };
   }
 
-  // Vertical speed: elevation gain (m) per hour of moving time
-  // Primary predictor of canyon fitness — directly related to uphill power output
+  // Vertical speed (m/hr) = the best single predictor of canyon performance.
+  // Measures how efficiently you convert effort into elevation — critical for
+  // the 11,000 ft of climbing in R2R2R.
   const vertSpeeds = qualifying.map(
     (a) => a.total_elevation_gain / (a.moving_time / 3600)
   );
   const medVert = median(vertSpeeds);
 
+  // Also compute weighted volume score: total vertical gain across the year
+  const totalGainM = qualifying.reduce((s, a) => s + a.total_elevation_gain, 0);
+  const weeklyGainM = totalGainM / 52;
+
   let suggestedLevel: FitnessLevel;
   let reasoning: string;
 
-  if (medVert >= 750) {
+  if (medVert >= 750 || weeklyGainM >= 600) {
     suggestedLevel = 'ELITE';
-    reasoning = `Elite: median ${Math.round(medVert)} m/hr vertical, consistent with ultra-endurance mountain athletes.`;
-  } else if (medVert >= 550) {
+    reasoning = `Elite: ${Math.round(medVert)} m/hr median vertical speed, ${Math.round(weeklyGainM)} m/week avg climbing across ${qualifying.length} activities.`;
+  } else if (medVert >= 550 || weeklyGainM >= 350) {
     suggestedLevel = 'STRONG';
-    reasoning = `Strong: median ${Math.round(medVert)} m/hr vertical, experienced and well-conditioned.`;
-  } else if (medVert >= 350) {
+    reasoning = `Strong: ${Math.round(medVert)} m/hr median vertical speed, ${Math.round(weeklyGainM)} m/week avg climbing.`;
+  } else if (medVert >= 350 || weeklyGainM >= 150) {
     suggestedLevel = 'INTERMEDIATE';
-    reasoning = `Intermediate: median ${Math.round(medVert)} m/hr vertical, solid fitness base.`;
+    reasoning = `Intermediate: ${Math.round(medVert)} m/hr median vertical speed, ${Math.round(weeklyGainM)} m/week avg climbing.`;
   } else {
     suggestedLevel = 'BEGINNER';
-    reasoning = `Beginner: median ${Math.round(medVert)} m/hr vertical. Take extra time in the canyon.`;
+    reasoning = `Beginner: ${Math.round(medVert)} m/hr median vertical speed. Consider more elevation training before R2R2R.`;
   }
 
   const confidence: 'HIGH' | 'MEDIUM' | 'LOW' =
-    qualifying.length >= 10 ? 'HIGH' : qualifying.length >= 4 ? 'MEDIUM' : 'LOW';
+    qualifying.length >= 12 ? 'HIGH' : qualifying.length >= 5 ? 'MEDIUM' : 'LOW';
 
   return {
     suggestedLevel,
     qualifyingCount: qualifying.length,
+    totalActivities: total,
     medianVerticalSpeedMperHr: Math.round(medVert),
     confidence,
     reasoning,
+    topSportTypes: topTypes_,
   };
 }

@@ -117,8 +117,13 @@ export default function SettingsScreen() {
                 <Text style={styles.analysisLevel}>{FITNESS_LABEL[analysis.suggestedLevel]}</Text>
                 <Text style={styles.analysisReasoning}>{analysis.reasoning}</Text>
                 <Text style={styles.analysisMeta}>
-                  {analysis.qualifyingActivities} qualifying activities · {CONFIDENCE_LABEL[analysis.confidence]}
+                  {analysis.qualifyingCount} of {analysis.totalActivities} activities qualified · {CONFIDENCE_LABEL[analysis.confidence]}
                 </Text>
+                {analysis.topSportTypes?.length > 0 && (
+                  <Text style={[styles.analysisMeta, { marginTop: 3 }]}>
+                    Top: {analysis.topSportTypes.join(' · ')}
+                  </Text>
+                )}
               </View>
             )}
 
