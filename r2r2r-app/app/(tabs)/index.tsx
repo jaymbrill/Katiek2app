@@ -146,7 +146,7 @@ function Pill({ label }: { label: string }) {
 
 export default function GroupScreen() {
   const router = useRouter();
-  const { athletes, loadAthletes } = useStravaStore();
+  const { athletes, loadAthletes, connecting, connectError } = useStravaStore();
 
   useEffect(() => { loadAthletes(); }, []);
 
@@ -178,6 +178,25 @@ export default function GroupScreen() {
           <StatPill label="South Kaibab → Bright Angel" />
         </View>
       </View>
+
+      {/* Connecting banner */}
+      {connecting && (
+        <View style={styles.connectingBanner}>
+          <ActivityIndicator size="small" color="#FC4C02" />
+          <View style={styles.connectingText}>
+            <Text style={styles.connectingTitle}>Connecting your Strava…</Text>
+            <Text style={styles.connectingSub}>Fetching 2 years of activity data — this takes 15–30 seconds</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Connect error */}
+      {!connecting && connectError ? (
+        <View style={styles.connectErrorBanner}>
+          <Text style={styles.connectErrorTitle}>Connection failed</Text>
+          <Text style={styles.connectErrorMsg}>{connectError}</Text>
+        </View>
+      ) : null}
 
       {/* Group leaderboard */}
       <View style={styles.section}>
@@ -377,6 +396,24 @@ const styles = StyleSheet.create({
   removeChip: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#334155' },
   actionChipText: { color: '#94a3b8', fontSize: 12, fontWeight: '600' },
   removeChipText: { color: '#475569' },
+
+  // Connecting / error banners
+  connectingBanner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 14,
+    marginHorizontal: 16, marginTop: 16,
+    backgroundColor: '#1a0d00', borderRadius: 12, padding: 16,
+    borderWidth: 1, borderColor: '#FC4C02',
+  },
+  connectingText: { flex: 1 },
+  connectingTitle: { color: '#FC4C02', fontSize: 14, fontWeight: '700', marginBottom: 3 },
+  connectingSub: { color: '#94a3b8', fontSize: 12, lineHeight: 18 },
+  connectErrorBanner: {
+    marginHorizontal: 16, marginTop: 16,
+    backgroundColor: '#1a0000', borderRadius: 12, padding: 16,
+    borderWidth: 1, borderColor: '#ef4444',
+  },
+  connectErrorTitle: { color: '#ef4444', fontSize: 14, fontWeight: '700', marginBottom: 4 },
+  connectErrorMsg: { color: '#94a3b8', fontSize: 13, lineHeight: 18 },
 
   // Connect
   connectBtn: {
