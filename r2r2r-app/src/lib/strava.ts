@@ -28,7 +28,8 @@ const CLIENT_SECRET = process.env.EXPO_PUBLIC_STRAVA_CLIENT_SECRET ?? '';
 
 export function getRedirectUri(): string {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    return `${window.location.origin}/strava-callback`;
+    // Use root URL so Render always serves index.html — code param handled in layout
+    return window.location.origin;
   }
   return process.env.EXPO_PUBLIC_STRAVA_REDIRECT_URI ?? '';
 }
@@ -40,6 +41,7 @@ export function getStravaAuthUrl(): string {
     response_type: 'code',
     approval_prompt: 'auto',
     scope: 'activity:read_all',
+    state: 'strava_oauth',
   });
   return `https://www.strava.com/oauth/authorize?${params}`;
 }

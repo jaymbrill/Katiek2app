@@ -2,8 +2,9 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Platform, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { exchangeCode } from '../src/lib/strava';
+import { useStravaStore } from '../src/store/stravaStore';
 
-// ErrorBoundary shown instead of blank screen on render crash
 export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
   return (
     <View style={errStyles.container}>
@@ -24,7 +25,6 @@ const errStyles = StyleSheet.create({
   btnText: { color: '#fff', fontWeight: '600' },
 });
 
-// Guard all notification calls — expo-notifications has no web implementation
 if (Platform.OS !== 'web') {
   const Notifications = require('expo-notifications');
   Notifications.setNotificationHandler({
@@ -37,6 +37,24 @@ if (Platform.OS !== 'web') {
 }
 
 export default function RootLayout() {
+  const { setToken, token } = useStravaStore();
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      // Only process if it looks like a Strava callback (has code + scope param)
+      const state = params.get('state');
+      if (code && state === 'strava_oauth' && !token) {
+        // Strip the OAuth params from the URL without a page reload
+        window.history.replaceState({}, '', window.location.pathname);
+        exchangeCode(code)
+          .then((t) => setToken(t))
+          .catch((e) => console.warn('Strava auth failed:', e));
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (Platform.OS === 'web') return;
     async function setupNotifications() {
@@ -52,10 +70,11 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: '#0f172a' },
+          headerStyle: { backgroundColor: '#080f1e' },
           headerTintColor: '#f1f5f9',
           headerTitleStyle: { fontWeight: '700' },
-          contentStyle: { backgroundColor: '#0f172a' },
+          contentStyle: { backgroundColor: '#080f1e' },
+          headerShadowVisible: false,
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -65,10 +84,7 @@ export default function RootLayout() {
           name="tracker/checkin"
           options={{ title: 'Check In', presentation: 'modal' }}
         />
-        <Stack.Screen
-          name="strava-callback/index"
-          options={{ headerShown: false }}
-        />
+        <Stack.Screen name="strava-callback/index" options={{ headerShown: false }} />
       </Stack>
     </>
   );
