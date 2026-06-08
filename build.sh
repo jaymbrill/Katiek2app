@@ -4,5 +4,6 @@ cd r2r2r-app
 npm install --legacy-peer-deps
 EXPO_NO_TELEMETRY=1 CI=1 npx expo export --platform web
 cp public/_redirects dist/_redirects
+cp dist/index.html dist/404.html
 rm -rf ../dist
 cp -r dist ../dist
