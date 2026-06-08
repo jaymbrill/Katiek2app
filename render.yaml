@@ -11,8 +11,8 @@ services:
 
 staticSites:
   - name: r2r2r-companion
-    buildCommand: cd r2r2r-app && npm install --legacy-peer-deps && EXPO_NO_TELEMETRY=1 CI=1 npx expo export --platform web && cp public/_redirects dist/_redirects
-    staticPublishPath: r2r2r-app/dist
+    buildCommand: bash build.sh
+    staticPublishPath: dist
     pullRequestPreviewsEnabled: true
     autoDeploy: true
     routes:
