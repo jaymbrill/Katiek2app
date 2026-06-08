@@ -29,8 +29,8 @@ function AthleteCard({ record, rank }: { record: AthleteRecord; rank: number }) 
   const [expanded, setExpanded] = useState(false);
   const syncing = syncingIds.includes(record.id);
   const error = errors[record.id];
-  const { analysis, token } = record;
-  const name = `${token.athlete.firstname} ${token.athlete.lastname}`;
+  const { analysis } = record;
+  const name = `${record.firstname} ${record.lastname}`;
 
   const medalColors = ['#f59e0b', '#94a3b8', '#cd7c44'];
   const rankColor = rank <= 3 ? medalColors[rank - 1] : '#475569';
@@ -145,7 +145,9 @@ export default function SettingsScreen() {
   const [saveMsg, setSaveMsg] = useState('');
   const [saveErr, setSaveErr] = useState('');
 
-  const { athletes } = useStravaStore();
+  const { athletes, loadAthletes } = useStravaStore();
+
+  useEffect(() => { loadAthletes(); }, []);
 
   // Sort athletes by median ft/hr descending
   const sortedAthletes = [...athletes].sort((a, b) => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -40,8 +40,8 @@ function AthleteRow({ record, rank }: { record: AthleteRecord; rank: number }) {
   const [expanded, setExpanded] = useState(false);
   const syncing = syncingIds.includes(record.id);
   const error = errors[record.id];
-  const { analysis, token } = record;
-  const name = `${token.athlete.firstname} ${token.athlete.lastname}`;
+  const { analysis } = record;
+  const name = `${record.firstname} ${record.lastname}`;
   const level = analysis?.suggestedLevel ?? null;
   const accent = level ? FITNESS_COLOR[level] : '#475569';
 
@@ -146,7 +146,9 @@ function Pill({ label }: { label: string }) {
 
 export default function GroupScreen() {
   const router = useRouter();
-  const { athletes } = useStravaStore();
+  const { athletes, loadAthletes } = useStravaStore();
+
+  useEffect(() => { loadAthletes(); }, []);
 
   const sorted = [...athletes].sort(
     (a, b) => (b.analysis?.medianVerticalSpeedFtPerHr ?? 0) - (a.analysis?.medianVerticalSpeedFtPerHr ?? 0)

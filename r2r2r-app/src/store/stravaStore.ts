@@ -1,95 +1,95 @@
 import { create } from 'zustand';
-import { Platform } from 'react-native';
 import type { StravaToken } from '../lib/strava';
 import type { StravaAnalysisResult } from '../lib/stravaAnalysis';
-import { getValidToken, fetchYearOfActivities } from '../lib/strava';
-import { analyzeActivities } from '../lib/stravaAnalysis';
 
-const STORAGE_KEY = 'r2r2r_strava_v2';
+const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
 
 export interface AthleteRecord {
   id: string;
-  token: StravaToken;
+  firstname: string;
+  lastname: string;
+  profile: string;
   analysis: StravaAnalysisResult | null;
   lastSyncedAt: number | null;
 }
 
-interface Persisted {
+interface StravaStore {
   athletes: AthleteRecord[];
-}
-
-function load(): Persisted {
-  if (Platform.OS !== 'web') return { athletes: [] };
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : { athletes: [] };
-  } catch {
-    return { athletes: [] };
-  }
-}
-
-function persist(data: Persisted) {
-  if (Platform.OS !== 'web') return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {}
-}
-
-interface StravaStore extends Persisted {
   syncingIds: string[];
   errors: Record<string, string>;
+  loaded: boolean;
+  loadAthletes: () => Promise<void>;
   addAthlete: (token: StravaToken) => Promise<void>;
-  removeAthlete: (athleteId: string) => void;
+  removeAthlete: (athleteId: string) => Promise<void>;
   syncAthlete: (athleteId: string) => Promise<void>;
 }
 
-const initial = load();
+async function apiFetch(path: string, options?: RequestInit): Promise<any> {
+  if (!API_URL) throw new Error('API not configured (EXPO_PUBLIC_API_URL missing)');
+  const res = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error ?? `API error ${res.status}`);
+  return json;
+}
 
 export const useStravaStore = create<StravaStore>((set, get) => ({
-  ...initial,
+  athletes: [],
   syncingIds: [],
   errors: {},
+  loaded: false,
+
+  loadAthletes: async () => {
+    try {
+      const athletes: AthleteRecord[] = await apiFetch('/athletes');
+      set({ athletes, loaded: true });
+    } catch (e: any) {
+      set({ loaded: true });
+    }
+  },
 
   addAthlete: async (token) => {
     const id = String(token.athlete.id);
-    const existing = get().athletes.find((a) => a.id === id);
-    const newRecord: AthleteRecord = {
-      id,
-      token,
-      analysis: existing?.analysis ?? null,
-      lastSyncedAt: existing?.lastSyncedAt ?? null,
-    };
-    const athletes = [...get().athletes.filter((a) => a.id !== id), newRecord];
-    set({ athletes });
-    persist({ athletes });
-    await get().syncAthlete(id);
+    set((s) => ({ syncingIds: [...s.syncingIds, id], errors: { ...s.errors, [id]: '' } }));
+    try {
+      const record: AthleteRecord = await apiFetch('/athletes', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+      });
+      set((s) => ({
+        athletes: [...s.athletes.filter((a) => a.id !== record.id), record],
+        syncingIds: s.syncingIds.filter((i) => i !== id),
+      }));
+    } catch (e: any) {
+      set((s) => ({
+        syncingIds: s.syncingIds.filter((i) => i !== id),
+        errors: { ...s.errors, [id]: e?.message ?? 'Failed to connect' },
+      }));
+    }
   },
 
-  removeAthlete: (athleteId) => {
-    const athletes = get().athletes.filter((a) => a.id !== athleteId);
-    set({ athletes });
-    persist({ athletes });
+  removeAthlete: async (athleteId) => {
+    set((s) => ({ athletes: s.athletes.filter((a) => a.id !== athleteId) }));
+    try {
+      await apiFetch(`/athletes/${athleteId}`, { method: 'DELETE' });
+    } catch {
+      // Optimistic removal — ignore errors
+    }
   },
 
   syncAthlete: async (athleteId) => {
-    const record = get().athletes.find((a) => a.id === athleteId);
-    if (!record) return;
     set((s) => ({ syncingIds: [...s.syncingIds, athleteId], errors: { ...s.errors, [athleteId]: '' } }));
     try {
-      const validToken = await getValidToken(record.token);
-      const activities = await fetchYearOfActivities(validToken.access_token);
-      const analysis = analyzeActivities(activities);
-      const lastSyncedAt = Date.now();
-      set((s) => {
-        const athletes = s.athletes.map((a) =>
-          a.id === athleteId ? { ...a, token: validToken, analysis, lastSyncedAt } : a
-        );
-        persist({ athletes });
-        return { athletes, syncingIds: s.syncingIds.filter((id) => id !== athleteId) };
-      });
+      const record: AthleteRecord = await apiFetch(`/athletes/${athleteId}/sync`, { method: 'POST' });
+      set((s) => ({
+        athletes: s.athletes.map((a) => (a.id === athleteId ? record : a)),
+        syncingIds: s.syncingIds.filter((i) => i !== athleteId),
+      }));
     } catch (e: any) {
       set((s) => ({
-        syncingIds: s.syncingIds.filter((id) => id !== athleteId),
+        syncingIds: s.syncingIds.filter((i) => i !== athleteId),
         errors: { ...s.errors, [athleteId]: e?.message ?? 'Sync failed' },
       }));
     }
