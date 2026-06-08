@@ -134,18 +134,30 @@ export default function SettingsScreen() {
                     Top sports: {analysis.topSportTypes.join(' · ')}
                   </Text>
                 )}
-                <View style={styles.criteriaBox}>
-                  <Text style={styles.criteriaTitle}>What qualifies</Text>
-                  <Text style={styles.criteriaText}>
-                    · Any activity with 1,000+ ft (305 m) of elevation gain{'\n'}
-                    · At least 10 minutes of moving time{'\n'}
-                    · All sport types included (runs, rides, climbs, ski, etc.){'\n'}
-                    · Looks back 2 years of Strava history
-                  </Text>
-                  <Text style={styles.criteriaText + ''}>
-                    {'\n'}Scored on median vertical speed (m/hr) + weekly climbing volume.
-                  </Text>
-                </View>
+                {analysis.topEfforts?.length > 0 && (
+                  <View style={styles.effortsBox}>
+                    <Text style={styles.criteriaTitle}>
+                      Top qualifying efforts (by elevation)
+                    </Text>
+                    {analysis.topEfforts.map((e) => (
+                      <View key={e.id} style={styles.effortRow}>
+                        <View style={styles.effortLeft}>
+                          <Text style={styles.effortName} numberOfLines={1}>{e.name}</Text>
+                          <Text style={styles.effortMeta}>
+                            {e.sport_type} · {new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </Text>
+                        </View>
+                        <View style={styles.effortRight}>
+                          <Text style={styles.effortGain}>{e.elevationGainFt.toLocaleString()} ft</Text>
+                          <Text style={styles.effortSpeed}>{e.verticalSpeedMperHr} m/hr</Text>
+                        </View>
+                      </View>
+                    ))}
+                    <Text style={styles.criteriaText}>
+                      Criteria: 1,000+ ft gain · 10+ min · all sport types · 2-year lookback
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
 
@@ -331,9 +343,19 @@ const styles = StyleSheet.create({
   confMed: { backgroundColor: '#1e3a5f' },
   confLow: { backgroundColor: '#2d1f00' },
   confidenceText: { color: '#86efac', fontSize: 10, fontWeight: '700' },
-  criteriaBox: { marginTop: 10, borderTopWidth: 1, borderTopColor: '#1e293b', paddingTop: 10 },
-  criteriaTitle: { color: '#64748b', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
-  criteriaText: { color: '#334155', fontSize: 12, lineHeight: 20 },
+  criteriaTitle: { color: '#64748b', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
+  criteriaText: { color: '#334155', fontSize: 11, lineHeight: 18, marginTop: 10 },
+  effortsBox: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#1e293b', paddingTop: 12 },
+  effortRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#1e293b',
+  },
+  effortLeft: { flex: 1, marginRight: 12 },
+  effortName: { color: '#cbd5e1', fontSize: 13, fontWeight: '600' },
+  effortMeta: { color: '#475569', fontSize: 11, marginTop: 1 },
+  effortRight: { alignItems: 'flex-end' },
+  effortGain: { color: '#FC4C02', fontSize: 13, fontWeight: '700' },
+  effortSpeed: { color: '#475569', fontSize: 11, marginTop: 1 },
   stravaActions: { flexDirection: 'row', gap: 10 },
   stravaActionBtn: {
     flex: 1, backgroundColor: '#334155', borderRadius: 8, paddingVertical: 10,

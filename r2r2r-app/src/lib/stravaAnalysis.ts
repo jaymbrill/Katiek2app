@@ -5,6 +5,17 @@ import type { StravaActivity } from './strava';
 const MIN_ELEVATION_M = 305;
 const MIN_MOVING_TIME_S = 600; // 10 minutes
 
+export interface QualifyingEffort {
+  id: number;
+  name: string;
+  sport_type: string;
+  date: string;
+  elevationGainFt: number;
+  distanceMiles: number;
+  movingTimeMin: number;
+  verticalSpeedMperHr: number;
+}
+
 export interface StravaAnalysisResult {
   suggestedLevel: FitnessLevel;
   qualifyingCount: number;
@@ -13,6 +24,7 @@ export interface StravaAnalysisResult {
   confidence: 'HIGH' | 'MEDIUM' | 'LOW';
   reasoning: string;
   topSportTypes: string[];
+  topEfforts: QualifyingEffort[]; // top 15 by elevation gain
 }
 
 function median(nums: number[]): number {
@@ -48,6 +60,7 @@ export function analyzeActivities(activities: StravaActivity[]): StravaAnalysisR
       confidence: 'LOW',
       reasoning: `No activities with 1,000+ ft of gain found across ${total} total activities in the past 2 years. Defaulting to Intermediate.`,
       topSportTypes: topTypes(activities),
+      topEfforts: [],
     };
   }
 
@@ -81,6 +94,20 @@ export function analyzeActivities(activities: StravaActivity[]): StravaAnalysisR
   const confidence: 'HIGH' | 'MEDIUM' | 'LOW' =
     qualifying.length >= 12 ? 'HIGH' : qualifying.length >= 5 ? 'MEDIUM' : 'LOW';
 
+  const topEfforts: QualifyingEffort[] = [...qualifying]
+    .sort((a, b) => b.total_elevation_gain - a.total_elevation_gain)
+    .slice(0, 15)
+    .map((a) => ({
+      id: a.id,
+      name: a.name,
+      sport_type: a.sport_type,
+      date: a.start_date.slice(0, 10),
+      elevationGainFt: Math.round(a.total_elevation_gain * 3.281),
+      distanceMiles: Math.round((a.distance / 1609.34) * 10) / 10,
+      movingTimeMin: Math.round(a.moving_time / 60),
+      verticalSpeedMperHr: Math.round(a.total_elevation_gain / (a.moving_time / 3600)),
+    }));
+
   return {
     suggestedLevel,
     qualifyingCount: qualifying.length,
@@ -89,5 +116,6 @@ export function analyzeActivities(activities: StravaActivity[]): StravaAnalysisR
     confidence,
     reasoning,
     topSportTypes: topTypes(qualifying),
+    topEfforts,
   };
 }
