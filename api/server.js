@@ -203,10 +203,15 @@ const app = express();
 app.use(cors({ origin: ALLOWED_ORIGIN, methods: ['GET', 'POST', 'DELETE', 'OPTIONS'] }));
 app.use(express.json());
 
-app.get('/health', (_req, res) => res.json({ ok: true }));
+app.get('/health', (_req, res) => res.json({ ok: true, db: dbReady }));
+
+function requireDb(req, res, next) {
+  if (!dbReady) return res.status(503).json({ error: 'Database not ready yet — try again in a few seconds' });
+  next();
+}
 
 // List all athletes (no tokens)
-app.get('/athletes', async (_req, res) => {
+app.get('/athletes', requireDb, async (_req, res) => {
   try {
     const { rows } = await pool.query(
       'SELECT id, firstname, lastname, profile, analysis, last_synced_at FROM athletes ORDER BY created_at'
@@ -219,7 +224,7 @@ app.get('/athletes', async (_req, res) => {
 });
 
 // Add/update athlete — receives token from client OAuth, stores it, syncs immediately
-app.post('/athletes', async (req, res) => {
+app.post('/athletes', requireDb, async (req, res) => {
   const { token } = req.body;
   if (!token?.athlete?.id || !token.access_token || !token.refresh_token) {
     return res.status(400).json({ error: 'Missing token fields' });
@@ -245,7 +250,7 @@ app.post('/athletes', async (req, res) => {
 });
 
 // Re-sync an existing athlete
-app.post('/athletes/:id/sync', async (req, res) => {
+app.post('/athletes/:id/sync', requireDb, async (req, res) => {
   try {
     const result = await syncAthlete(req.params.id);
     if (!result) return res.status(404).json({ error: 'Athlete not found' });
@@ -257,7 +262,7 @@ app.post('/athletes/:id/sync', async (req, res) => {
 });
 
 // Remove an athlete
-app.delete('/athletes/:id', async (req, res) => {
+app.delete('/athletes/:id', requireDb, async (req, res) => {
   try {
     await pool.query('DELETE FROM athletes WHERE id = $1', [req.params.id]);
     res.json({ ok: true });
@@ -267,7 +272,26 @@ app.delete('/athletes/:id', async (req, res) => {
   }
 });
 
+// Start listening immediately so Render's health check passes,
+// then init the DB in the background with retries.
 const PORT = process.env.PORT ?? 3001;
-initDb()
-  .then(() => app.listen(PORT, () => console.log(`r2r2r API on :${PORT}`)))
-  .catch((e) => { console.error('DB init failed', e); process.exit(1); });
+app.listen(PORT, () => console.log(`r2r2r API on :${PORT}`));
+
+let dbReady = false;
+
+async function initWithRetry(attempts = 10, delayMs = 3000) {
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      await initDb();
+      dbReady = true;
+      console.log('DB ready');
+      return;
+    } catch (e) {
+      console.error(`DB init attempt ${i}/${attempts} failed:`, e.message);
+      if (i < attempts) await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  console.error('DB init gave up after', attempts, 'attempts');
+}
+
+initWithRetry();
