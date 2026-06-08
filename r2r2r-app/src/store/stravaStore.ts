@@ -57,6 +57,13 @@ export const useStravaStore = create<StravaStore>((set, get) => ({
   },
 
   addAthlete: async (token) => {
+    // Guard against malformed token (missing athlete data = env vars not set)
+    if (!token?.athlete?.id || !token?.access_token) {
+      const msg = 'Strava token is missing athlete data. Make sure EXPO_PUBLIC_STRAVA_CLIENT_ID and EXPO_PUBLIC_STRAVA_CLIENT_SECRET are set in Render and the static site was redeployed after setting them.';
+      console.error('addAthlete:', msg, token);
+      set({ connecting: false, connectError: msg });
+      return;
+    }
     const id = String(token.athlete.id);
     set({ connecting: true, connectError: '' });
     try {

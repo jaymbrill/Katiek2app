@@ -41,7 +41,7 @@ function AthleteRow({ record, rank }: { record: AthleteRecord; rank: number }) {
   const syncing = syncingIds.includes(record.id);
   const error = errors[record.id];
   const { analysis } = record;
-  const name = `${record.firstname} ${record.lastname}`;
+  const name = [record.firstname, record.lastname].filter(Boolean).join(' ') || 'Unknown Athlete';
   const level = analysis?.suggestedLevel ?? null;
   const accent = level ? FITNESS_COLOR[level] : '#475569';
 

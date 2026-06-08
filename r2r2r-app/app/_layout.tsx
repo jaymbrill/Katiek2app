@@ -47,8 +47,19 @@ export default function RootLayout() {
       if (code && state === 'strava_oauth') {
         window.history.replaceState({}, '', window.location.pathname);
         exchangeCode(code)
-          .then((t) => addAthlete(t))
-          .catch((e) => console.warn('Strava auth failed:', e));
+          .then((t) => {
+            // Guard: Strava must return athlete name data
+            if (!t?.athlete?.id) {
+              addAthlete({ ...t, _error: 'Strava returned no athlete data — check EXPO_PUBLIC_STRAVA_CLIENT_ID and CLIENT_SECRET are set in Render and the site was redeployed.' } as any);
+              return;
+            }
+            return addAthlete(t);
+          })
+          .catch((e) => {
+            console.error('Strava exchange failed:', e);
+            // Surface the error via the store so the group page can show it
+            useStravaStore.setState({ connectError: e?.message ?? 'Strava connection failed', connecting: false });
+          });
       }
     }
   }, []);

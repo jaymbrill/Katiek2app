@@ -30,7 +30,7 @@ function AthleteCard({ record, rank }: { record: AthleteRecord; rank: number }) 
   const syncing = syncingIds.includes(record.id);
   const error = errors[record.id];
   const { analysis } = record;
-  const name = `${record.firstname} ${record.lastname}`;
+  const name = [record.firstname, record.lastname].filter(Boolean).join(' ') || 'Unknown Athlete';
 
   const medalColors = ['#f59e0b', '#94a3b8', '#cd7c44'];
   const rankColor = rank <= 3 ? medalColors[rank - 1] : '#475569';
