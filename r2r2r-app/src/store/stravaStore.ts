@@ -33,8 +33,14 @@ async function apiFetch(path: string, options?: RequestInit): Promise<any> {
     ...options,
     headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
   });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.error ?? `API error ${res.status}`);
+  // For error responses, try to extract the error message but don't crash
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(json.error ?? `API error ${res.status}`);
+  }
+  // For success responses, let JSON parse fail loudly — a non-JSON 200 means the API isn't ready
+  const json = await res.json();
+  if (!json || typeof json !== 'object') throw new Error('API returned unexpected response');
   return json;
 }
 
@@ -48,7 +54,10 @@ export const useStravaStore = create<StravaStore>((set, get) => ({
 
   loadAthletes: async () => {
     try {
-      const athletes: AthleteRecord[] = await apiFetch('/athletes');
+      const data = await apiFetch('/athletes');
+      const athletes: AthleteRecord[] = Array.isArray(data)
+        ? data.filter((a: any) => a?.id && a?.firstname)
+        : [];
       set({ athletes, loaded: true });
     } catch (e: any) {
       console.warn('loadAthletes failed:', e?.message);
@@ -71,6 +80,9 @@ export const useStravaStore = create<StravaStore>((set, get) => ({
         method: 'POST',
         body: JSON.stringify({ token }),
       });
+      if (!record?.id || !record?.firstname) {
+        throw new Error(`API returned invalid athlete data: ${JSON.stringify(record)}`);
+      }
       set((s) => ({
         athletes: [...s.athletes.filter((a) => a.id !== record.id), record],
         connecting: false,
