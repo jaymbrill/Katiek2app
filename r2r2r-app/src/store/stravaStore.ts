@@ -5,21 +5,26 @@ import type { StravaAnalysisResult } from '../lib/stravaAnalysis';
 import { getValidToken, fetchYearOfActivities } from '../lib/strava';
 import { analyzeActivities } from '../lib/stravaAnalysis';
 
-const STORAGE_KEY = 'r2r2r_strava';
+const STORAGE_KEY = 'r2r2r_strava_v2';
 
-interface Persisted {
-  token: StravaToken | null;
+export interface AthleteRecord {
+  id: string;
+  token: StravaToken;
   analysis: StravaAnalysisResult | null;
   lastSyncedAt: number | null;
 }
 
+interface Persisted {
+  athletes: AthleteRecord[];
+}
+
 function load(): Persisted {
-  if (Platform.OS !== 'web') return { token: null, analysis: null, lastSyncedAt: null };
+  if (Platform.OS !== 'web') return { athletes: [] };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : { token: null, analysis: null, lastSyncedAt: null };
+    return raw ? JSON.parse(raw) : { athletes: [] };
   } catch {
-    return { token: null, analysis: null, lastSyncedAt: null };
+    return { athletes: [] };
   }
 }
 
@@ -31,47 +36,62 @@ function persist(data: Persisted) {
 }
 
 interface StravaStore extends Persisted {
-  syncing: boolean;
-  error: string | null;
-  setToken: (token: StravaToken) => Promise<void>;
-  disconnect: () => void;
-  sync: () => Promise<void>;
+  syncingIds: string[];
+  errors: Record<string, string>;
+  addAthlete: (token: StravaToken) => Promise<void>;
+  removeAthlete: (athleteId: string) => void;
+  syncAthlete: (athleteId: string) => Promise<void>;
 }
 
 const initial = load();
 
 export const useStravaStore = create<StravaStore>((set, get) => ({
   ...initial,
-  syncing: false,
-  error: null,
+  syncingIds: [],
+  errors: {},
 
-  setToken: async (token) => {
-    set({ token, error: null });
-    persist({ token, analysis: get().analysis, lastSyncedAt: get().lastSyncedAt });
-    await get().sync();
+  addAthlete: async (token) => {
+    const id = String(token.athlete.id);
+    const existing = get().athletes.find((a) => a.id === id);
+    const newRecord: AthleteRecord = {
+      id,
+      token,
+      analysis: existing?.analysis ?? null,
+      lastSyncedAt: existing?.lastSyncedAt ?? null,
+    };
+    const athletes = [...get().athletes.filter((a) => a.id !== id), newRecord];
+    set({ athletes });
+    persist({ athletes });
+    await get().syncAthlete(id);
   },
 
-  disconnect: () => {
-    set({ token: null, analysis: null, lastSyncedAt: null, error: null });
-    if (Platform.OS === 'web') localStorage.removeItem(STORAGE_KEY);
+  removeAthlete: (athleteId) => {
+    const athletes = get().athletes.filter((a) => a.id !== athleteId);
+    set({ athletes });
+    persist({ athletes });
   },
 
-  sync: async () => {
-    const { token } = get();
-    if (!token) return;
-    set({ syncing: true, error: null });
+  syncAthlete: async (athleteId) => {
+    const record = get().athletes.find((a) => a.id === athleteId);
+    if (!record) return;
+    set((s) => ({ syncingIds: [...s.syncingIds, athleteId], errors: { ...s.errors, [athleteId]: '' } }));
     try {
-      const validToken = await getValidToken(token);
-      if (validToken !== token) {
-        set({ token: validToken });
-      }
+      const validToken = await getValidToken(record.token);
       const activities = await fetchYearOfActivities(validToken.access_token);
       const analysis = analyzeActivities(activities);
       const lastSyncedAt = Date.now();
-      set({ analysis, lastSyncedAt, syncing: false, token: validToken });
-      persist({ token: validToken, analysis, lastSyncedAt });
+      set((s) => {
+        const athletes = s.athletes.map((a) =>
+          a.id === athleteId ? { ...a, token: validToken, analysis, lastSyncedAt } : a
+        );
+        persist({ athletes });
+        return { athletes, syncingIds: s.syncingIds.filter((id) => id !== athleteId) };
+      });
     } catch (e: any) {
-      set({ syncing: false, error: e?.message ?? 'Sync failed' });
+      set((s) => ({
+        syncingIds: s.syncingIds.filter((id) => id !== athleteId),
+        errors: { ...s.errors, [athleteId]: e?.message ?? 'Sync failed' },
+      }));
     }
   },
 }));

@@ -48,7 +48,11 @@ function isFutureDate(date: Date): boolean {
 export default function SetupScreen() {
   const router = useRouter();
   const { saveTrip } = useTripStore();
-  const { analysis } = useStravaStore();
+  const athletes = useStravaStore((s) => s.athletes);
+  // Use the highest-ranked athlete's analysis to pre-fill fitness level
+  const analysis = [...athletes]
+    .sort((a, b) => (b.analysis?.medianVerticalSpeedFtPerHr ?? 0) - (a.analysis?.medianVerticalSpeedFtPerHr ?? 0))
+    [0]?.analysis ?? null;
 
   const [tripDate, setTripDate] = useState('');
   const [startTime, setStartTime] = useState('04:00');

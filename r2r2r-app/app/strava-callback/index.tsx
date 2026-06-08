@@ -7,7 +7,7 @@ import { useStravaStore } from '../../src/store/stravaStore';
 export default function StravaCallbackScreen() {
   const params = useLocalSearchParams<{ code?: string; error?: string }>();
   const router = useRouter();
-  const { setToken } = useStravaStore();
+  const { addAthlete } = useStravaStore();
   const [errMsg, setErrMsg] = useState('');
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export default function StravaCallbackScreen() {
     async function finish() {
       try {
         const token = await exchangeCode(params.code!);
-        await setToken(token);
+        await addAthlete(token);
         router.replace('/(tabs)/settings' as any);
       } catch (e: any) {
         setErrMsg(e?.message ?? 'Authorization failed. Please try again.');

@@ -37,19 +37,17 @@ if (Platform.OS !== 'web') {
 }
 
 export default function RootLayout() {
-  const { setToken, token } = useStravaStore();
+  const { addAthlete } = useStravaStore();
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
-      // Only process if it looks like a Strava callback (has code + scope param)
       const state = params.get('state');
-      if (code && state === 'strava_oauth' && !token) {
-        // Strip the OAuth params from the URL without a page reload
+      if (code && state === 'strava_oauth') {
         window.history.replaceState({}, '', window.location.pathname);
         exchangeCode(code)
-          .then((t) => setToken(t))
+          .then((t) => addAthlete(t))
           .catch((e) => console.warn('Strava auth failed:', e));
       }
     }
