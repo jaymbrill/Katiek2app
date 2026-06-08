@@ -116,14 +116,36 @@ export default function SettingsScreen() {
                 <Text style={styles.analysisLabel}>Suggested fitness level</Text>
                 <Text style={styles.analysisLevel}>{FITNESS_LABEL[analysis.suggestedLevel]}</Text>
                 <Text style={styles.analysisReasoning}>{analysis.reasoning}</Text>
-                <Text style={styles.analysisMeta}>
-                  {analysis.qualifyingCount} of {analysis.totalActivities} activities qualified · {CONFIDENCE_LABEL[analysis.confidence]}
-                </Text>
+                <View style={styles.analysisMetaRow}>
+                  <Text style={styles.analysisMeta}>
+                    {analysis.qualifyingCount} of {analysis.totalActivities} activities qualified
+                  </Text>
+                  <View style={[
+                    styles.confidenceChip,
+                    analysis.confidence === 'HIGH' ? styles.confHigh
+                    : analysis.confidence === 'MEDIUM' ? styles.confMed
+                    : styles.confLow,
+                  ]}>
+                    <Text style={styles.confidenceText}>{analysis.confidence}</Text>
+                  </View>
+                </View>
                 {analysis.topSportTypes?.length > 0 && (
-                  <Text style={[styles.analysisMeta, { marginTop: 3 }]}>
-                    Top: {analysis.topSportTypes.join(' · ')}
+                  <Text style={styles.analysisSports}>
+                    Top sports: {analysis.topSportTypes.join(' · ')}
                   </Text>
                 )}
+                <View style={styles.criteriaBox}>
+                  <Text style={styles.criteriaTitle}>What qualifies</Text>
+                  <Text style={styles.criteriaText}>
+                    · Any activity with 1,000+ ft (305 m) of elevation gain{'\n'}
+                    · At least 10 minutes of moving time{'\n'}
+                    · All sport types included (runs, rides, climbs, ski, etc.){'\n'}
+                    · Looks back 2 years of Strava history
+                  </Text>
+                  <Text style={styles.criteriaText + ''}>
+                    {'\n'}Scored on median vertical speed (m/hr) + weekly climbing volume.
+                  </Text>
+                </View>
               </View>
             )}
 
@@ -301,7 +323,17 @@ const styles = StyleSheet.create({
   },
   analysisLevel: { color: '#FC4C02', fontSize: 22, fontWeight: '800', marginBottom: 6 },
   analysisReasoning: { color: '#cbd5e1', fontSize: 13, lineHeight: 19, marginBottom: 8 },
+  analysisMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   analysisMeta: { color: '#475569', fontSize: 12 },
+  analysisSports: { color: '#475569', fontSize: 12, marginBottom: 12 },
+  confidenceChip: { borderRadius: 5, paddingHorizontal: 7, paddingVertical: 2 },
+  confHigh: { backgroundColor: '#052e16' },
+  confMed: { backgroundColor: '#1e3a5f' },
+  confLow: { backgroundColor: '#2d1f00' },
+  confidenceText: { color: '#86efac', fontSize: 10, fontWeight: '700' },
+  criteriaBox: { marginTop: 10, borderTopWidth: 1, borderTopColor: '#1e293b', paddingTop: 10 },
+  criteriaTitle: { color: '#64748b', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
+  criteriaText: { color: '#334155', fontSize: 12, lineHeight: 20 },
   stravaActions: { flexDirection: 'row', gap: 10 },
   stravaActionBtn: {
     flex: 1, backgroundColor: '#334155', borderRadius: 8, paddingVertical: 10,

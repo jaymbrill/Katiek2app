@@ -86,7 +86,7 @@ export async function getValidToken(token: StravaToken): Promise<StravaToken> {
 }
 
 export async function fetchYearOfActivities(accessToken: string): Promise<StravaActivity[]> {
-  const after = Math.floor((Date.now() - 365 * 24 * 60 * 60 * 1000) / 1000);
+  const after = Math.floor((Date.now() - 2 * 365 * 24 * 60 * 60 * 1000) / 1000);
   const all: StravaActivity[] = [];
   let page = 1;
   while (true) {
@@ -99,7 +99,7 @@ export async function fetchYearOfActivities(accessToken: string): Promise<Strava
     if (!batch.length) break;
     all.push(...batch);
     page++;
-    if (page > 20) break; // safety cap: 2000 activities
+    if (page > 40) break; // safety cap: 4000 activities
   }
   return all;
 }
