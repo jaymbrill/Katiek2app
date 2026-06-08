@@ -163,7 +163,7 @@ export default function GroupScreen() {
       <View style={styles.hero}>
         <Text style={styles.heroEyebrow}>GRAND CANYON</Text>
         <Text style={styles.heroTitle}>R2R2R</Text>
-        <Text style={styles.heroSub}>Rim · River · Rim</Text>
+
         <View style={styles.eventBanner}>
           <Text style={styles.eventDate}>{EVENT_LABEL}</Text>
           <View style={styles.daysChip}>
