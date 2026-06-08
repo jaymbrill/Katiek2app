@@ -39,7 +39,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build:web": "npx expo export --platform web && cp public/_redirects dist/_redirects"
+    "build:web": "EXPO_NO_TELEMETRY=1 CI=1 npx expo export --platform web && cp public/_redirects dist/_redirects"
   },
   "private": true
 }
