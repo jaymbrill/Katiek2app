@@ -1,20 +1,30 @@
-import React, { useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Linking,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { useTripStore } from '../../src/store/tripStore';
-import { formatTime } from '../../src/lib/pacing';
+import { useRouter } from 'expo-router';
+import { useStravaStore } from '../../src/store/stravaStore';
+import type { AthleteRecord } from '../../src/store/stravaStore';
+import { getStravaAuthUrl } from '../../src/lib/strava';
+
+const EVENT_DATE = new Date('2026-10-07T00:00:00');
+const EVENT_LABEL = 'October 7th, 2026';
 
 const FITNESS_COLOR: Record<string, string> = {
   ELITE: '#a78bfa',
   STRONG: '#34d399',
   INTERMEDIATE: '#60a5fa',
   BEGINNER: '#fb923c',
+};
+
+const FITNESS_LABEL: Record<string, string> = {
+  ELITE: 'Elite', STRONG: 'Strong', INTERMEDIATE: 'Intermediate', BEGINNER: 'Beginner',
 };
 
 function daysUntil(date: Date): number {
@@ -25,146 +35,220 @@ function daysUntil(date: Date): number {
   return Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-export default function HomeScreen() {
-  const router = useRouter();
-  const { trips, loadTrips } = useTripStore();
+function AthleteRow({ record, rank }: { record: AthleteRecord; rank: number }) {
+  const { syncingIds, errors, syncAthlete, removeAthlete } = useStravaStore();
+  const [expanded, setExpanded] = useState(false);
+  const syncing = syncingIds.includes(record.id);
+  const error = errors[record.id];
+  const { analysis, token } = record;
+  const name = `${token.athlete.firstname} ${token.athlete.lastname}`;
+  const level = analysis?.suggestedLevel ?? null;
+  const accent = level ? FITNESS_COLOR[level] : '#475569';
 
-  useEffect(() => { loadTrips(); }, []);
-  useFocusEffect(React.useCallback(() => { loadTrips(); }, []));
-
-  const activeTrips = trips.filter((t) => t.status === 'IN_PROGRESS');
-  const plannedTrips = trips
-    .filter((t) => t.status === 'PLANNED')
-    .sort((a, b) => new Date(a.tripDate).getTime() - new Date(b.tripDate).getTime());
-  const pastTrips = trips
-    .filter((t) => t.status === 'COMPLETED' || t.status === 'ABORTED')
-    .slice(0, 5);
+  const medalColors = ['#f59e0b', '#94a3b8', '#cd7c44'];
+  const rankColor = rank <= 3 ? medalColors[rank - 1] : '#334155';
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Hero */}
+    <View style={styles.athleteCard}>
+      {/* Header row */}
+      <View style={styles.athleteRow}>
+        <View style={[styles.rankBadge, { backgroundColor: rankColor + '22', borderColor: rankColor }]}>
+          <Text style={[styles.rankText, { color: rankColor }]}>{rank}</Text>
+        </View>
+        <View style={styles.athleteInfo}>
+          <Text style={styles.athleteName}>{name}</Text>
+          {level && (
+            <Text style={[styles.athleteLevel, { color: accent }]}>{FITNESS_LABEL[level]}</Text>
+          )}
+        </View>
+        {analysis && (
+          <View style={styles.speedBlock}>
+            <Text style={styles.speedValue}>{analysis.medianVerticalSpeedFtPerHr.toLocaleString()}</Text>
+            <Text style={styles.speedUnit}>ft/hr</Text>
+          </View>
+        )}
+        {syncing && <ActivityIndicator size="small" color="#FC4C02" style={{ marginLeft: 8 }} />}
+      </View>
+
+      {/* Stats pills */}
+      {analysis && !syncing && (
+        <View style={styles.pillRow}>
+          <Pill label={`${analysis.qualifyingCount} qualifying`} />
+          <Pill label={`${analysis.weeklyClimbingFt.toLocaleString()} ft/wk`} />
+          <Pill label={analysis.confidence} />
+        </View>
+      )}
+
+      {error && !syncing && <Text style={styles.errorText}>{error}</Text>}
+
+      {/* Expand efforts */}
+      {analysis && analysis.topEfforts.length > 0 && (
+        <TouchableOpacity
+          onPress={() => setExpanded((v) => !v)}
+          style={styles.expandBtn}
+          accessibilityLabel={expanded ? 'Hide efforts' : 'Show efforts'}
+        >
+          <Text style={styles.expandText}>
+            {expanded ? '▲ Hide efforts' : `▼ Top ${analysis.topEfforts.length} qualifying efforts`}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {expanded && analysis && (
+        <View style={styles.effortsList}>
+          {analysis.topEfforts.map((e) => (
+            <View key={e.id} style={styles.effortRow}>
+              <View style={styles.effortLeft}>
+                <Text style={styles.effortName} numberOfLines={1}>{e.name}</Text>
+                <Text style={styles.effortMeta}>
+                  {e.sport_type} · {new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </Text>
+              </View>
+              <View style={styles.effortRight}>
+                <Text style={styles.effortGain}>{e.elevationGainFt.toLocaleString()} ft</Text>
+                <Text style={styles.effortFtHr}>{e.verticalSpeedFtPerHr.toLocaleString()} ft/hr</Text>
+              </View>
+            </View>
+          ))}
+          <Text style={styles.effortCriteria}>
+            1,000+ ft gain · 10+ min · all sport types · 2-year lookback
+          </Text>
+        </View>
+      )}
+
+      {/* Actions */}
+      <View style={styles.athleteActions}>
+        <TouchableOpacity
+          style={[styles.actionChip, syncing && styles.disabled]}
+          onPress={() => syncAthlete(record.id)}
+          disabled={syncing}
+        >
+          <Text style={styles.actionChipText}>Refresh</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionChip, styles.removeChip]}
+          onPress={() => removeAthlete(record.id)}
+        >
+          <Text style={[styles.actionChipText, styles.removeChipText]}>Remove</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+function Pill({ label }: { label: string }) {
+  return (
+    <View style={styles.pill}>
+      <Text style={styles.pillText}>{label}</Text>
+    </View>
+  );
+}
+
+export default function GroupScreen() {
+  const router = useRouter();
+  const { athletes } = useStravaStore();
+
+  const sorted = [...athletes].sort(
+    (a, b) => (b.analysis?.medianVerticalSpeedFtPerHr ?? 0) - (a.analysis?.medianVerticalSpeedFtPerHr ?? 0)
+  );
+
+  const days = daysUntil(EVENT_DATE);
+  const daysLabel =
+    days > 0 ? `${days} days away` : days === 0 ? 'Today!' : `${Math.abs(days)} days ago`;
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+      {/* Event hero */}
       <View style={styles.hero}>
-        <Text style={styles.heroLabel}>GRAND CANYON</Text>
+        <Text style={styles.heroEyebrow}>GRAND CANYON</Text>
         <Text style={styles.heroTitle}>R2R2R</Text>
         <Text style={styles.heroSub}>Rim · River · Rim</Text>
+        <View style={styles.eventBanner}>
+          <Text style={styles.eventDate}>{EVENT_LABEL}</Text>
+          <View style={styles.daysChip}>
+            <Text style={styles.daysChipText}>{daysLabel}</Text>
+          </View>
+        </View>
         <View style={styles.heroStats}>
           <StatPill label="47 mi" />
-          <StatPill label="11,000 ft" />
-          <StatPill label="18–32 hrs" />
+          <StatPill label="11,000 ft gain" />
+          <StatPill label="South Kaibab → Bright Angel" />
         </View>
       </View>
 
-      {/* Active trip banner */}
-      {activeTrips.map((trip) => (
+      {/* Group leaderboard */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>
+            {sorted.length > 0
+              ? `${sorted.length} Athlete${sorted.length !== 1 ? 's' : ''} · Ranked by Vertical Speed`
+              : 'Group Roster'}
+          </Text>
+        </View>
+
+        {sorted.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No athletes yet</Text>
+            <Text style={styles.emptyBody}>
+              Everyone in the group connects their Strava below. We'll pull 2 years of climbs to rank
+              each person by their median vertical speed (ft/hr) — a reliable predictor of canyon pace.
+            </Text>
+          </View>
+        )}
+
+        {sorted.map((record, i) => (
+          <AthleteRow key={record.id} record={record} rank={i + 1} />
+        ))}
+
         <TouchableOpacity
-          key={trip.id}
-          style={styles.activeCard}
-          onPress={() => router.push('/tracker')}
-          accessibilityLabel="Open live tracker"
+          style={styles.connectBtn}
+          onPress={() => Linking.openURL(getStravaAuthUrl())}
+          accessibilityLabel="Connect your Strava account"
         >
-          <View style={styles.activeCardHeader}>
-            <View style={styles.pulsingDot} />
-            <Text style={styles.activeCardBadge}>LIVE</Text>
-          </View>
-          <Text style={styles.activeCardDate}>
-            {new Date(trip.tripDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          <Text style={styles.connectBtnText}>
+            {athletes.length === 0 ? 'Connect with Strava' : '+ Add Your Strava'}
           </Text>
-          <Text style={styles.activeCardMeta}>
-            Started {trip.startTime} · {trip.fitnessLevel}
-          </Text>
-          <View style={styles.activeCardCta}>
-            <Text style={styles.activeCardCtaText}>Open Tracker</Text>
-            <Text style={styles.activeCardCtaArrow}>→</Text>
-          </View>
         </TouchableOpacity>
-      ))}
+        <Text style={styles.connectNote}>Read-only · each athlete connects on their own device</Text>
+      </View>
 
-      {/* Plan button */}
-      <TouchableOpacity
-        style={styles.planBtn}
-        onPress={() => router.push('/setup')}
-        accessibilityLabel="Plan a new R2R2R trip"
-      >
-        <Text style={styles.planBtnIcon}>+</Text>
-        <Text style={styles.planBtnText}>Plan a Trip</Text>
-      </TouchableOpacity>
-
-      {/* Upcoming */}
-      {plannedTrips.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Upcoming</Text>
-          {plannedTrips.map((trip) => {
-            const days = daysUntil(new Date(trip.tripDate));
-            const accent = FITNESS_COLOR[trip.fitnessLevel] ?? '#60a5fa';
-            return (
-              <TouchableOpacity
-                key={trip.id}
-                style={styles.tripCard}
-                onPress={() => router.push('/tracker')}
-                accessibilityLabel={`Trip on ${new Date(trip.tripDate).toLocaleDateString()}`}
-              >
-                <View style={[styles.tripAccent, { backgroundColor: accent }]} />
-                <View style={styles.tripBody}>
-                  <View style={styles.tripRow}>
-                    <Text style={styles.tripDate}>
-                      {new Date(trip.tripDate).toLocaleDateString('en-US', {
-                        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
-                      })}
-                    </Text>
-                    <View style={styles.daysChip}>
-                      <Text style={styles.daysChipText}>
-                        {days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `${days}d`}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.tripMeta}>
-                    {trip.startTime} start · est. finish {formatTime(new Date(trip.targetFinishTime))}
-                  </Text>
-                  <View style={styles.tripTags}>
-                    <Tag label={trip.fitnessLevel} color={accent} />
-                    <Tag label={trip.direction === 'S_TO_N' ? 'S→N' : 'N→S'} color="#475569" />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+      {/* Trip tools */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Trip Tools</Text>
+        <View style={styles.toolGrid}>
+          <ToolCard
+            icon="📋"
+            label="Plan Trip"
+            desc="Build a personal pacing schedule"
+            onPress={() => router.push('/setup')}
+          />
+          <ToolCard
+            icon="🌡"
+            label="Conditions"
+            desc="Weather & canyon temps"
+            onPress={() => router.push('/(tabs)/conditions' as any)}
+          />
+          <ToolCard
+            icon="🎒"
+            label="Gear"
+            desc="Packing checklist"
+            onPress={() => router.push('/(tabs)/gear' as any)}
+          />
+          <ToolCard
+            icon="👤"
+            label="Profile"
+            desc="Settings & contacts"
+            onPress={() => router.push('/(tabs)/settings' as any)}
+          />
         </View>
-      )}
+      </View>
 
-      {/* Past trips */}
-      {pastTrips.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>History</Text>
-          {pastTrips.map((trip) => (
-            <View key={trip.id} style={styles.pastCard}>
-              <View style={styles.pastRow}>
-                <Text style={styles.pastDate}>
-                  {new Date(trip.tripDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </Text>
-                <View style={[
-                  styles.statusChip,
-                  trip.status === 'COMPLETED' ? styles.statusDone : styles.statusAborted,
-                ]}>
-                  <Text style={styles.statusChipText}>
-                    {trip.status === 'COMPLETED' ? '✓ Done' : '✗ Aborted'}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.pastMeta}>{trip.fitnessLevel} · {trip.startTime} start</Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Safety note */}
+      {/* Safety */}
       <View style={styles.safetyCard}>
         <Text style={styles.safetyIcon}>⚠</Text>
         <Text style={styles.safetyText}>
-          Planning aid only. Always check NPS conditions, carry a satellite communicator, and file a trip plan before entering the canyon.
+          Planning aid only. Check NPS conditions, carry a satellite communicator, and file a trip plan before entering the canyon.
         </Text>
       </View>
     </ScrollView>
@@ -179,167 +263,144 @@ function StatPill({ label }: { label: string }) {
   );
 }
 
-function Tag({ label, color }: { label: string; color: string }) {
+function ToolCard({ icon, label, desc, onPress }: { icon: string; label: string; desc: string; onPress: () => void }) {
   return (
-    <View style={[styles.tag, { borderColor: color + '40' }]}>
-      <Text style={[styles.tagText, { color }]}>{label}</Text>
-    </View>
+    <TouchableOpacity style={styles.toolCard} onPress={onPress} accessibilityLabel={label}>
+      <Text style={styles.toolIcon}>{icon}</Text>
+      <Text style={styles.toolLabel}>{label}</Text>
+      <Text style={styles.toolDesc}>{desc}</Text>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#080f1e' },
-  content: { paddingBottom: 48 },
+  content: { paddingBottom: 56 },
 
   // Hero
   hero: {
     alignItems: 'center',
-    paddingTop: 48,
-    paddingBottom: 40,
+    paddingTop: 52,
+    paddingBottom: 32,
     paddingHorizontal: 24,
     borderBottomWidth: 1,
     borderBottomColor: '#1e293b',
   },
-  heroLabel: {
-    color: '#475569',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 4,
-    marginBottom: 8,
-  },
-  heroTitle: {
-    color: '#f1f5f9',
-    fontSize: 56,
-    fontWeight: '900',
-    letterSpacing: 8,
-    lineHeight: 60,
-  },
-  heroSub: {
-    color: '#3b82f6',
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 3,
-    marginTop: 6,
-    marginBottom: 20,
-  },
-  heroStats: { flexDirection: 'row', gap: 8 },
-  statPill: {
-    backgroundColor: '#1e293b',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  statPillText: { color: '#94a3b8', fontSize: 12, fontWeight: '600' },
-
-  // Active
-  activeCard: {
-    margin: 16,
-    backgroundColor: '#0c1a0c',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#22c55e',
-  },
-  activeCardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  pulsingDot: {
-    width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e', marginRight: 8,
-  },
-  activeCardBadge: {
-    color: '#22c55e', fontSize: 11, fontWeight: '800', letterSpacing: 2,
-  },
-  activeCardDate: { color: '#f1f5f9', fontSize: 18, fontWeight: '700', marginBottom: 4 },
-  activeCardMeta: { color: '#64748b', fontSize: 14, marginBottom: 14 },
-  activeCardCta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  activeCardCtaText: { color: '#22c55e', fontSize: 15, fontWeight: '700' },
-  activeCardCtaArrow: { color: '#22c55e', fontSize: 15 },
-
-  // Plan button
-  planBtn: {
+  heroEyebrow: { color: '#475569', fontSize: 11, fontWeight: '700', letterSpacing: 4, marginBottom: 6 },
+  heroTitle: { color: '#f1f5f9', fontSize: 64, fontWeight: '900', letterSpacing: 10, lineHeight: 68 },
+  heroSub: { color: '#3b82f6', fontSize: 13, fontWeight: '600', letterSpacing: 3, marginTop: 4, marginBottom: 18 },
+  eventBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    margin: 16,
-    backgroundColor: '#1d4ed8',
-    borderRadius: 14,
-    paddingVertical: 18,
-    gap: 8,
+    gap: 10,
+    backgroundColor: '#0f172a',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+    marginBottom: 16,
   },
-  planBtnIcon: { color: '#93c5fd', fontSize: 22, fontWeight: '300', lineHeight: 24 },
-  planBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  eventDate: { color: '#f1f5f9', fontSize: 15, fontWeight: '700' },
+  daysChip: { backgroundColor: '#1e3a5f', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  daysChipText: { color: '#60a5fa', fontSize: 12, fontWeight: '700' },
+  heroStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' },
+  statPill: {
+    backgroundColor: '#1e293b', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5,
+    borderWidth: 1, borderColor: '#334155',
+  },
+  statPillText: { color: '#94a3b8', fontSize: 11, fontWeight: '600' },
 
   // Section
-  section: { marginTop: 8, paddingHorizontal: 16, marginBottom: 8 },
-  sectionLabel: {
-    color: '#475569',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    marginBottom: 10,
+  section: { paddingHorizontal: 16, paddingTop: 24, marginBottom: 4 },
+  sectionHeader: { marginBottom: 12 },
+  sectionTitle: {
+    color: '#94a3b8', fontSize: 11, fontWeight: '700',
+    textTransform: 'uppercase', letterSpacing: 1.5,
   },
 
-  // Trip card
-  tripCard: {
-    flexDirection: 'row',
-    backgroundColor: '#111827',
-    borderRadius: 14,
-    marginBottom: 8,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#1e293b',
+  // Empty state
+  emptyState: {
+    backgroundColor: '#111827', borderRadius: 14, padding: 22,
+    borderWidth: 1, borderColor: '#1e293b', marginBottom: 12,
   },
-  tripAccent: { width: 3 },
-  tripBody: { flex: 1, padding: 16 },
-  tripRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  tripDate: { color: '#e2e8f0', fontSize: 15, fontWeight: '600' },
-  tripMeta: { color: '#475569', fontSize: 13, marginBottom: 10 },
-  tripTags: { flexDirection: 'row', gap: 6 },
-  daysChip: {
-    backgroundColor: '#1e3a5f',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  daysChipText: { color: '#60a5fa', fontSize: 12, fontWeight: '700' },
-  tag: {
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderWidth: 1,
-  },
-  tagText: { fontSize: 11, fontWeight: '700' },
+  emptyTitle: { color: '#f1f5f9', fontSize: 16, fontWeight: '700', marginBottom: 8 },
+  emptyBody: { color: '#64748b', fontSize: 14, lineHeight: 21 },
 
-  // Past card
-  pastCard: {
-    backgroundColor: '#111827',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 6,
-    borderWidth: 1,
-    borderColor: '#1e293b',
+  // Athlete card
+  athleteCard: {
+    backgroundColor: '#111827', borderRadius: 14, padding: 16,
+    marginBottom: 10, borderWidth: 1, borderColor: '#1e293b',
   },
-  pastRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 },
-  pastDate: { color: '#94a3b8', fontSize: 14, fontWeight: '500' },
-  pastMeta: { color: '#334155', fontSize: 13 },
-  statusChip: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  statusDone: { backgroundColor: '#052e16' },
-  statusAborted: { backgroundColor: '#2d0a0a' },
-  statusChipText: { color: '#86efac', fontSize: 11, fontWeight: '700' },
+  athleteRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  rankBadge: {
+    width: 30, height: 30, borderRadius: 15, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center', marginRight: 12,
+  },
+  rankText: { fontSize: 13, fontWeight: '800' },
+  athleteInfo: { flex: 1 },
+  athleteName: { color: '#f1f5f9', fontSize: 15, fontWeight: '700' },
+  athleteLevel: { fontSize: 12, fontWeight: '600', marginTop: 1 },
+  speedBlock: { alignItems: 'flex-end' },
+  speedValue: { color: '#f1f5f9', fontSize: 22, fontWeight: '900' },
+  speedUnit: { color: '#475569', fontSize: 10, fontWeight: '600' },
+
+  pillRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 8 },
+  pill: { backgroundColor: '#1e293b', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
+  pillText: { color: '#64748b', fontSize: 11, fontWeight: '600' },
+
+  errorText: { color: '#ef4444', fontSize: 12, marginBottom: 6 },
+
+  expandBtn: { paddingVertical: 5, marginBottom: 4 },
+  expandText: { color: '#3b82f6', fontSize: 13, fontWeight: '600' },
+
+  effortsList: { borderTopWidth: 1, borderTopColor: '#1e293b', paddingTop: 10, marginBottom: 4 },
+  effortRow: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: '#0f172a',
+  },
+  effortLeft: { flex: 1, marginRight: 12 },
+  effortName: { color: '#cbd5e1', fontSize: 13, fontWeight: '600' },
+  effortMeta: { color: '#475569', fontSize: 11, marginTop: 1 },
+  effortRight: { alignItems: 'flex-end' },
+  effortGain: { color: '#FC4C02', fontSize: 13, fontWeight: '700' },
+  effortFtHr: { color: '#475569', fontSize: 11, marginTop: 1 },
+  effortCriteria: { color: '#334155', fontSize: 11, marginTop: 8, lineHeight: 17 },
+
+  athleteActions: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  actionChip: {
+    backgroundColor: '#1e293b', borderRadius: 7, paddingHorizontal: 14, paddingVertical: 7,
+  },
+  disabled: { opacity: 0.5 },
+  removeChip: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#334155' },
+  actionChipText: { color: '#94a3b8', fontSize: 12, fontWeight: '600' },
+  removeChipText: { color: '#475569' },
+
+  // Connect
+  connectBtn: {
+    backgroundColor: '#FC4C02', borderRadius: 12, paddingVertical: 15,
+    alignItems: 'center', marginTop: 4, marginBottom: 8,
+  },
+  connectBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  connectNote: { color: '#334155', fontSize: 12, textAlign: 'center' },
+
+  // Tool grid
+  toolGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  toolCard: {
+    width: '47%',
+    backgroundColor: '#111827', borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: '#1e293b',
+  },
+  toolIcon: { fontSize: 24, marginBottom: 8 },
+  toolLabel: { color: '#e2e8f0', fontSize: 14, fontWeight: '700', marginBottom: 3 },
+  toolDesc: { color: '#475569', fontSize: 12, lineHeight: 17 },
 
   // Safety
   safetyCard: {
-    flexDirection: 'row',
-    margin: 16,
-    marginTop: 20,
-    backgroundColor: '#1a1200',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#78350f',
-    gap: 10,
+    flexDirection: 'row', marginHorizontal: 16, marginTop: 20,
+    backgroundColor: '#1a1200', borderRadius: 12, padding: 14,
+    borderWidth: 1, borderColor: '#78350f', gap: 10,
   },
-  safetyIcon: { fontSize: 16 },
+  safetyIcon: { fontSize: 14 },
   safetyText: { flex: 1, color: '#78350f', fontSize: 12, lineHeight: 18 },
 });

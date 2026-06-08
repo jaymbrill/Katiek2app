@@ -40,7 +40,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           headerShown: false,
-          tabBarIcon: ({ focused }) => <TabIcon icon="🏔" label="Home" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="🏔" label="Group" focused={focused} />,
         }}
       />
       <Tabs.Screen
