@@ -40,10 +40,12 @@ function daysUntil(date: Date): number {
 // ── Leaderboard 1: Vertical Speed ──────────────────────────────────────────
 
 function SpeedRow({ record, rank }: { record: AthleteRecord; rank: number }) {
-  const { syncingIds, errors, syncAthlete, removeAthlete, updateTripDate } = useStravaStore();
+  const { syncingIds, errors, syncAthlete, removeAthlete, updateTripDate, updateEmail } = useStravaStore();
   const [expanded, setExpanded] = useState(false);
   const [editingDate, setEditingDate] = useState(false);
   const [dateInput, setDateInput] = useState(record.tripDate ?? '2026-10-07');
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [emailInput, setEmailInput] = useState(record.email ?? '');
   const syncing = syncingIds.includes(record.id);
   const error = errors[record.id];
   const { analysis } = record;
@@ -152,6 +154,50 @@ function SpeedRow({ record, rank }: { record: AthleteRecord; rank: number }) {
             <Text style={styles.tripDateLabel}>
               📅 {new Date((record.tripDate ?? '2026-10-07') + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Contact email */}
+      <View style={styles.tripDateRow}>
+        {editingEmail ? (
+          <>
+            <TextInput
+              style={styles.tripDateInput}
+              value={emailInput}
+              onChangeText={setEmailInput}
+              placeholder="your@email.com"
+              placeholderTextColor="#475569"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              accessibilityLabel="Contact email"
+            />
+            <TouchableOpacity
+              style={styles.tripDateSave}
+              onPress={() => {
+                updateEmail(record.id, emailInput.trim());
+                setEditingEmail(false);
+              }}
+            >
+              <Text style={styles.tripDateSaveText}>Save</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setEditingEmail(false)} style={styles.tripDateCancel}>
+              <Text style={styles.tripDateCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </>
+        ) : record.email ? (
+          <TouchableOpacity
+            onPress={() => { setEmailInput(record.email); setEditingEmail(true); }}
+            style={styles.tripDateBtn}
+          >
+            <Text style={styles.tripDateLabel}>✉️ {record.email}</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={() => { setEmailInput(''); setEditingEmail(true); }}
+            style={styles.emailPromptBtn}
+          >
+            <Text style={styles.emailPromptText}>+ Add contact email for group coordination</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -606,6 +652,8 @@ const styles = StyleSheet.create({
   },
   tripDateSaveText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   tripDateCancel: { paddingHorizontal: 8, paddingVertical: 6 },
+  emailPromptBtn: { paddingVertical: 4 },
+  emailPromptText: { color: '#3b82f6', fontSize: 12, fontWeight: '600' },
   tripDateCancelText: { color: '#475569', fontSize: 12 },
 
   athleteActions: { flexDirection: 'row', gap: 8, marginTop: 10 },

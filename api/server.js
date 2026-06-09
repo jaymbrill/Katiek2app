@@ -34,6 +34,10 @@ async function initDb() {
     ALTER TABLE athletes
     ADD COLUMN IF NOT EXISTS trip_date TEXT NOT NULL DEFAULT '2026-10-07'
   `);
+  await pool.query(`
+    ALTER TABLE athletes
+    ADD COLUMN IF NOT EXISTS email TEXT NOT NULL DEFAULT ''
+  `);
 }
 
 // ── Strava helpers ─────────────────────────────────────────────────────────
@@ -231,6 +235,7 @@ function toPublic(row) {
     lastname: row.lastname,
     profile: row.profile,
     tripDate: row.trip_date ?? '2026-10-07',
+    email: row.email ?? '',
     analysis: row.analysis ?? null,
     lastSyncedAt: row.last_synced_at ? Number(row.last_synced_at) : null,
   };
@@ -260,7 +265,7 @@ function requireDb(req, res, next) {
 app.get('/athletes', requireDb, async (_req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT id, firstname, lastname, profile, trip_date, analysis, last_synced_at FROM athletes ORDER BY created_at'
+      'SELECT id, firstname, lastname, profile, trip_date, email, analysis, last_synced_at FROM athletes ORDER BY created_at'
     );
     res.json(rows.map(toPublic));
   } catch (e) {
@@ -291,7 +296,7 @@ app.post('/athletes', requireDb, async (req, res) => {
     );
 
     // Return immediately so the client isn't blocked waiting for Strava fetch
-    res.json({ id, firstname, lastname, profile, tripDate, analysis: null, lastSyncedAt: null });
+    res.json({ id, firstname, lastname, profile, tripDate, email: '', analysis: null, lastSyncedAt: null });
 
     // Sync in background — client polls GET /athletes until analysis appears
     syncAthlete(id).catch((e) => console.error(`Background sync failed for ${id}:`, e.message));
@@ -324,6 +329,21 @@ app.patch('/athletes/:id/trip-date', requireDb, async (req, res) => {
     res.json({ ok: true, tripDate });
   } catch (e) {
     console.error('PATCH /athletes/:id/trip-date', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Update an athlete's contact email
+app.patch('/athletes/:id/email', requireDb, async (req, res) => {
+  const { email } = req.body;
+  if (typeof email !== 'string') {
+    return res.status(400).json({ error: 'email must be a string' });
+  }
+  try {
+    await pool.query('UPDATE athletes SET email=$1 WHERE id=$2', [email.trim(), req.params.id]);
+    res.json({ ok: true, email: email.trim() });
+  } catch (e) {
+    console.error('PATCH /athletes/:id/email', e);
     res.status(500).json({ error: e.message });
   }
 });
