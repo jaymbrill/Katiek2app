@@ -21,6 +21,8 @@ export interface StravaActivity {
   elapsed_time: number;       // seconds
   total_elevation_gain: number; // meters
   start_date: string;
+  location_city?: string | null;
+  location_state?: string | null;
 }
 
 const CLIENT_ID = process.env.EXPO_PUBLIC_STRAVA_CLIENT_ID ?? '';

@@ -101,6 +101,7 @@ function SpeedRow({ record, rank }: { record: AthleteRecord; rank: number }) {
                 <Text style={styles.effortName} numberOfLines={1}>{e.name}</Text>
                 <Text style={styles.effortMeta}>
                   {e.sport_type} · {new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {e.city ? ` · ${e.city}` : ''}
                 </Text>
               </View>
               <View style={styles.effortRight}>
@@ -137,38 +138,81 @@ function SpeedRow({ record, rank }: { record: AthleteRecord; rank: number }) {
 // ── Leaderboard 2: Longest Hike/Run ────────────────────────────────────────
 
 function DistanceRow({ record, rank }: { record: AthleteRecord; rank: number }) {
+  const [expanded, setExpanded] = useState(false);
   const { analysis } = record;
   const name = [record.firstname, record.lastname].filter(Boolean).join(' ') || 'Unknown Athlete';
   const miles = analysis?.longestHikeRunMiles ?? 0;
   const synced = analysis != null;
+  const efforts = analysis?.topHikeRunEfforts ?? [];
 
   const medalColors = ['#f59e0b', '#94a3b8', '#cd7c44'];
   const rankColor = rank <= 3 && miles > 0 ? medalColors[rank - 1] : '#334155';
 
   return (
     <View style={styles.distanceCard}>
-      <View style={[styles.rankBadge, { backgroundColor: rankColor + '22', borderColor: rankColor }]}>
-        <Text style={[styles.rankText, { color: rankColor }]}>{rank}</Text>
+      {/* Header row */}
+      <View style={styles.distanceHeaderRow}>
+        <View style={[styles.rankBadge, { backgroundColor: rankColor + '22', borderColor: rankColor }]}>
+          <Text style={[styles.rankText, { color: rankColor }]}>{rank}</Text>
+        </View>
+        <View style={styles.distanceInfo}>
+          <Text style={styles.distanceName}>{name}</Text>
+          {synced && miles === 0 && (
+            <Text style={styles.distanceNote}>no hike/run over 10 mi on record</Text>
+          )}
+          {!synced && (
+            <Text style={styles.distanceNote}>syncing…</Text>
+          )}
+        </View>
+        <View style={styles.distanceBlock}>
+          {miles > 0 ? (
+            <>
+              <Text style={styles.distanceValue}>{miles}</Text>
+              <Text style={styles.distanceUnit}>mi</Text>
+            </>
+          ) : (
+            <Text style={styles.distanceNone}>—</Text>
+          )}
+        </View>
       </View>
-      <View style={styles.distanceInfo}>
-        <Text style={styles.distanceName}>{name}</Text>
-        {synced && miles === 0 && (
-          <Text style={styles.distanceNote}>no hike/run over 10 mi on record</Text>
-        )}
-        {!synced && (
-          <Text style={styles.distanceNote}>syncing…</Text>
-        )}
-      </View>
-      <View style={styles.distanceBlock}>
-        {miles > 0 ? (
-          <>
-            <Text style={styles.distanceValue}>{miles}</Text>
-            <Text style={styles.distanceUnit}>mi</Text>
-          </>
-        ) : (
-          <Text style={styles.distanceNone}>—</Text>
-        )}
-      </View>
+
+      {/* Expandable efforts */}
+      {efforts.length > 0 && (
+        <TouchableOpacity
+          onPress={() => setExpanded((v) => !v)}
+          style={styles.expandBtn}
+          accessibilityLabel={expanded ? 'Hide long efforts' : 'Show long efforts'}
+        >
+          <Text style={styles.expandText}>
+            {expanded ? '▲ Hide efforts' : `▼ Top ${efforts.length} long efforts`}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {expanded && (
+        <View style={styles.effortsList}>
+          {efforts.map((e) => (
+            <View key={e.id} style={styles.effortRow}>
+              <View style={styles.effortLeft}>
+                <Text style={styles.effortName} numberOfLines={1}>{e.name}</Text>
+                <Text style={styles.effortMeta}>
+                  {e.sport_type} · {new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {e.city ? ` · ${e.city}` : ''}
+                </Text>
+              </View>
+              <View style={styles.effortRight}>
+                <Text style={styles.effortGain}>{e.distanceMiles} mi</Text>
+                {e.elevationGainFt > 0 && (
+                  <Text style={styles.effortFtHr}>{e.elevationGainFt.toLocaleString()} ft gain</Text>
+                )}
+              </View>
+            </View>
+          ))}
+          <Text style={styles.effortCriteria}>
+            Runs, hikes & walks · over 10 miles · 2-year lookback
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -454,10 +498,10 @@ const styles = StyleSheet.create({
 
   // Distance leaderboard card
   distanceCard: {
-    flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#111827', borderRadius: 14, padding: 16,
     marginBottom: 10, borderWidth: 1, borderColor: '#1e293b',
   },
+  distanceHeaderRow: { flexDirection: 'row', alignItems: 'center' },
   distanceInfo: { flex: 1, marginLeft: 12 },
   distanceName: { color: '#f1f5f9', fontSize: 15, fontWeight: '700' },
   distanceNote: { color: '#475569', fontSize: 11, marginTop: 2 },

@@ -21,10 +21,22 @@ export interface QualifyingEffort {
   name: string;
   sport_type: string;
   date: string;
+  city: string;
   elevationGainFt: number;
   distanceMiles: number;
   movingTimeMin: number;
   verticalSpeedFtPerHr: number;
+}
+
+export interface HikeRunEffort {
+  id: number;
+  name: string;
+  sport_type: string;
+  date: string;
+  city: string;
+  distanceMiles: number;
+  movingTimeMin: number;
+  elevationGainFt: number;
 }
 
 export interface StravaAnalysisResult {
@@ -38,6 +50,7 @@ export interface StravaAnalysisResult {
   reasoning: string;
   topSportTypes: string[];
   topEfforts: QualifyingEffort[];
+  topHikeRunEfforts: HikeRunEffort[];
 }
 
 function median(nums: number[]): number {
@@ -56,6 +69,11 @@ function topTypes(activities: StravaActivity[]): string[] {
     .map(([type]) => type);
 }
 
+function cityLabel(a: StravaActivity): string {
+  const parts = [a.location_city, a.location_state].filter(Boolean);
+  return parts.join(', ');
+}
+
 export function analyzeActivities(activities: StravaActivity[]): StravaAnalysisResult {
   const total = activities.length;
 
@@ -63,13 +81,25 @@ export function analyzeActivities(activities: StravaActivity[]): StravaAnalysisR
     (a) => a.total_elevation_gain >= MIN_ELEVATION_M && a.moving_time >= MIN_MOVING_TIME_S
   );
 
-  // Longest on-foot activity over 10 miles (no biking/skiing)
-  const footLong = activities.filter(
-    (a) => FOOT_SPORT_TYPES.has(a.sport_type) && a.distance >= MIN_LONG_RUN_M
-  );
+  // Top 20 longest on-foot activities over 10 miles (no biking/skiing)
+  const footLong = activities
+    .filter((a) => FOOT_SPORT_TYPES.has(a.sport_type) && a.distance >= MIN_LONG_RUN_M)
+    .sort((a, b) => b.distance - a.distance);
+
   const longestHikeRunMiles = footLong.length
-    ? Math.round((Math.max(...footLong.map((a) => a.distance)) / 1609.34) * 10) / 10
+    ? Math.round((footLong[0].distance / 1609.34) * 10) / 10
     : 0;
+
+  const topHikeRunEfforts: HikeRunEffort[] = footLong.slice(0, 20).map((a) => ({
+    id: a.id,
+    name: a.name,
+    sport_type: a.sport_type,
+    date: a.start_date.slice(0, 10),
+    city: cityLabel(a),
+    distanceMiles: Math.round((a.distance / 1609.34) * 10) / 10,
+    movingTimeMin: Math.round(a.moving_time / 60),
+    elevationGainFt: Math.round(a.total_elevation_gain * M_TO_FT),
+  }));
 
   if (!qualifying.length) {
     return {
@@ -83,6 +113,7 @@ export function analyzeActivities(activities: StravaActivity[]): StravaAnalysisR
       reasoning: `No activities with 1,000+ ft of gain found across ${total} total activities in the past 2 years. Defaulting to Intermediate.`,
       topSportTypes: topTypes(activities),
       topEfforts: [],
+      topHikeRunEfforts,
     };
   }
 
@@ -118,12 +149,13 @@ export function analyzeActivities(activities: StravaActivity[]): StravaAnalysisR
 
   const topEfforts: QualifyingEffort[] = [...qualifying]
     .sort((a, b) => b.total_elevation_gain - a.total_elevation_gain)
-    .slice(0, 15)
+    .slice(0, 20)
     .map((a) => ({
       id: a.id,
       name: a.name,
       sport_type: a.sport_type,
       date: a.start_date.slice(0, 10),
+      city: cityLabel(a),
       elevationGainFt: Math.round(a.total_elevation_gain * M_TO_FT),
       distanceMiles: Math.round((a.distance / 1609.34) * 10) / 10,
       movingTimeMin: Math.round(a.moving_time / 60),
@@ -141,5 +173,6 @@ export function analyzeActivities(activities: StravaActivity[]): StravaAnalysisR
     reasoning,
     topSportTypes: topTypes(qualifying),
     topEfforts,
+    topHikeRunEfforts,
   };
 }

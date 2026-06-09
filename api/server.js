@@ -91,6 +91,10 @@ const FOOT_SPORT_TYPES = new Set([
   'Run', 'TrailRun', 'VirtualRun', 'Walk', 'Hike', 'Snowshoe',
 ]);
 
+function cityLabel(a) {
+  return [a.location_city, a.location_state].filter(Boolean).join(', ');
+}
+
 function analyzeActivities(activities) {
   const M_TO_FT = 3.281;
   const MIN_ELEVATION_M = 305;
@@ -105,13 +109,25 @@ function analyzeActivities(activities) {
     (a) => a.total_elevation_gain >= MIN_ELEVATION_M && a.moving_time >= MIN_MOVING_TIME_S
   );
 
-  // Longest on-foot activity over 10 miles (no biking/skiing)
-  const footLong = activities.filter(
-    (a) => FOOT_SPORT_TYPES.has(a.sport_type) && a.distance >= MIN_LONG_RUN_M
-  );
+  // Top 20 longest on-foot activities over 10 miles (no biking/skiing)
+  const footLong = activities
+    .filter((a) => FOOT_SPORT_TYPES.has(a.sport_type) && a.distance >= MIN_LONG_RUN_M)
+    .sort((a, b) => b.distance - a.distance);
+
   const longestHikeRunMiles = footLong.length
-    ? Math.round((Math.max(...footLong.map((a) => a.distance)) / 1609.34) * 10) / 10
+    ? Math.round((footLong[0].distance / 1609.34) * 10) / 10
     : 0;
+
+  const topHikeRunEfforts = footLong.slice(0, 20).map((a) => ({
+    id: a.id,
+    name: a.name,
+    sport_type: a.sport_type,
+    date: a.start_date.slice(0, 10),
+    city: cityLabel(a),
+    distanceMiles: Math.round((a.distance / 1609.34) * 10) / 10,
+    movingTimeMin: Math.round(a.moving_time / 60),
+    elevationGainFt: Math.round(a.total_elevation_gain * M_TO_FT),
+  }));
 
   if (!qualifying.length) {
     return {
@@ -125,6 +141,7 @@ function analyzeActivities(activities) {
       reasoning: `No activities with 1,000+ ft of gain found across ${total} total activities. Defaulting to Intermediate.`,
       topSportTypes: topTypes(activities),
       topEfforts: [],
+      topHikeRunEfforts,
     };
   }
 
@@ -152,12 +169,13 @@ function analyzeActivities(activities) {
 
   const topEfforts = [...qualifying]
     .sort((a, b) => b.total_elevation_gain - a.total_elevation_gain)
-    .slice(0, 15)
+    .slice(0, 20)
     .map((a) => ({
       id: a.id,
       name: a.name,
       sport_type: a.sport_type,
       date: a.start_date.slice(0, 10),
+      city: cityLabel(a),
       elevationGainFt: Math.round(a.total_elevation_gain * M_TO_FT),
       distanceMiles: Math.round((a.distance / 1609.34) * 10) / 10,
       movingTimeMin: Math.round(a.moving_time / 60),
@@ -175,6 +193,7 @@ function analyzeActivities(activities) {
     reasoning,
     topSportTypes: topTypes(qualifying),
     topEfforts,
+    topHikeRunEfforts,
   };
 }
 
