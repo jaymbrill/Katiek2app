@@ -6,10 +6,15 @@ const MIN_MOVING_TIME_S = 600;    // 10 minutes
 const MIN_LONG_RUN_M = 16093.4;   // 10 miles
 const M_TO_FT = 3.281;
 
-// ft/min thresholds (ft/hr ÷ 60, from m/hr research benchmarks)
-const ELITE_FT_MIN = 41;          // ≥750 m/hr → 41 ft/min
-const STRONG_FT_MIN = 30;         // ≥550 m/hr → 30 ft/min
-const INTERMEDIATE_FT_MIN = 19;   // ≥350 m/hr → 19 ft/min
+// ft/hr thresholds (m/hr benchmarks × 3.281)
+const ELITE_FT_HR = 2461;         // ≥750 m/hr
+const STRONG_FT_HR = 1804;        // ≥550 m/hr
+const INTERMEDIATE_FT_HR = 1148;  // ≥350 m/hr
+
+// On-foot sport types for distance leaderboard (excludes biking & skiing)
+const FOOT_SPORT_TYPES = new Set([
+  'Run', 'TrailRun', 'VirtualRun', 'Walk', 'Hike', 'Snowshoe',
+]);
 
 export interface QualifyingEffort {
   id: number;
@@ -19,16 +24,16 @@ export interface QualifyingEffort {
   elevationGainFt: number;
   distanceMiles: number;
   movingTimeMin: number;
-  verticalSpeedFtPerMin: number;
+  verticalSpeedFtPerHr: number;
 }
 
 export interface StravaAnalysisResult {
   suggestedLevel: FitnessLevel;
   qualifyingCount: number;
   totalActivities: number;
-  medianVerticalSpeedFtPerMin: number;
+  medianVerticalSpeedFtPerHr: number;
   weeklyClimbingFt: number;
-  longestRunMiles: number;
+  longestHikeRunMiles: number;
   confidence: 'HIGH' | 'MEDIUM' | 'LOW';
   reasoning: string;
   topSportTypes: string[];
@@ -58,10 +63,12 @@ export function analyzeActivities(activities: StravaActivity[]): StravaAnalysisR
     (a) => a.total_elevation_gain >= MIN_ELEVATION_M && a.moving_time >= MIN_MOVING_TIME_S
   );
 
-  // Longest run over 10 miles across all activities
-  const longRuns = activities.filter((a) => a.distance >= MIN_LONG_RUN_M);
-  const longestRunMiles = longRuns.length
-    ? Math.round((Math.max(...longRuns.map((a) => a.distance)) / 1609.34) * 10) / 10
+  // Longest on-foot activity over 10 miles (no biking/skiing)
+  const footLong = activities.filter(
+    (a) => FOOT_SPORT_TYPES.has(a.sport_type) && a.distance >= MIN_LONG_RUN_M
+  );
+  const longestHikeRunMiles = footLong.length
+    ? Math.round((Math.max(...footLong.map((a) => a.distance)) / 1609.34) * 10) / 10
     : 0;
 
   if (!qualifying.length) {
@@ -69,9 +76,9 @@ export function analyzeActivities(activities: StravaActivity[]): StravaAnalysisR
       suggestedLevel: 'INTERMEDIATE',
       qualifyingCount: 0,
       totalActivities: total,
-      medianVerticalSpeedFtPerMin: 0,
+      medianVerticalSpeedFtPerHr: 0,
       weeklyClimbingFt: 0,
-      longestRunMiles,
+      longestHikeRunMiles,
       confidence: 'LOW',
       reasoning: `No activities with 1,000+ ft of gain found across ${total} total activities in the past 2 years. Defaulting to Intermediate.`,
       topSportTypes: topTypes(activities),
@@ -79,31 +86,31 @@ export function analyzeActivities(activities: StravaActivity[]): StravaAnalysisR
     };
   }
 
-  // Vertical speed in ft/min
-  const vertSpeedsFtMin = qualifying.map(
-    (a) => (a.total_elevation_gain * M_TO_FT) / (a.moving_time / 60)
+  // Vertical speed in ft/hr
+  const vertSpeedsFtHr = qualifying.map(
+    (a) => (a.total_elevation_gain * M_TO_FT) / (a.moving_time / 3600)
   );
-  const medVertFtMin = median(vertSpeedsFtMin);
+  const medVertFtHr = median(vertSpeedsFtHr);
 
-  // Weekly climbing volume over 2 years in feet
+  // Weekly climbing volume over 2 years
   const totalGainFt = qualifying.reduce((s, a) => s + a.total_elevation_gain * M_TO_FT, 0);
   const weeklyGainFt = totalGainFt / 104;
 
   let suggestedLevel: FitnessLevel;
   let reasoning: string;
 
-  if (medVertFtMin >= ELITE_FT_MIN || weeklyGainFt >= 1970) {
+  if (medVertFtHr >= ELITE_FT_HR || weeklyGainFt >= 1970) {
     suggestedLevel = 'ELITE';
-    reasoning = `Elite: ${medVertFtMin.toFixed(1)} ft/min median vertical speed, ${Math.round(weeklyGainFt).toLocaleString()} ft/week avg climbing.`;
-  } else if (medVertFtMin >= STRONG_FT_MIN || weeklyGainFt >= 1148) {
+    reasoning = `Elite: ${Math.round(medVertFtHr).toLocaleString()} ft/hr median vertical speed, ${Math.round(weeklyGainFt).toLocaleString()} ft/week avg climbing.`;
+  } else if (medVertFtHr >= STRONG_FT_HR || weeklyGainFt >= 1148) {
     suggestedLevel = 'STRONG';
-    reasoning = `Strong: ${medVertFtMin.toFixed(1)} ft/min median vertical speed, ${Math.round(weeklyGainFt).toLocaleString()} ft/week avg climbing.`;
-  } else if (medVertFtMin >= INTERMEDIATE_FT_MIN || weeklyGainFt >= 492) {
+    reasoning = `Strong: ${Math.round(medVertFtHr).toLocaleString()} ft/hr median vertical speed, ${Math.round(weeklyGainFt).toLocaleString()} ft/week avg climbing.`;
+  } else if (medVertFtHr >= INTERMEDIATE_FT_HR || weeklyGainFt >= 492) {
     suggestedLevel = 'INTERMEDIATE';
-    reasoning = `Intermediate: ${medVertFtMin.toFixed(1)} ft/min median vertical speed, ${Math.round(weeklyGainFt).toLocaleString()} ft/week avg climbing.`;
+    reasoning = `Intermediate: ${Math.round(medVertFtHr).toLocaleString()} ft/hr median vertical speed, ${Math.round(weeklyGainFt).toLocaleString()} ft/week avg climbing.`;
   } else {
     suggestedLevel = 'BEGINNER';
-    reasoning = `Beginner: ${medVertFtMin.toFixed(1)} ft/min median vertical speed. More elevation training recommended.`;
+    reasoning = `Beginner: ${Math.round(medVertFtHr).toLocaleString()} ft/hr median vertical speed. More elevation training recommended.`;
   }
 
   const confidence: 'HIGH' | 'MEDIUM' | 'LOW' =
@@ -120,16 +127,16 @@ export function analyzeActivities(activities: StravaActivity[]): StravaAnalysisR
       elevationGainFt: Math.round(a.total_elevation_gain * M_TO_FT),
       distanceMiles: Math.round((a.distance / 1609.34) * 10) / 10,
       movingTimeMin: Math.round(a.moving_time / 60),
-      verticalSpeedFtPerMin: Math.round((a.total_elevation_gain * M_TO_FT) / (a.moving_time / 60) * 10) / 10,
+      verticalSpeedFtPerHr: Math.round((a.total_elevation_gain * M_TO_FT) / (a.moving_time / 3600)),
     }));
 
   return {
     suggestedLevel,
     qualifyingCount: qualifying.length,
     totalActivities: total,
-    medianVerticalSpeedFtPerMin: Math.round(medVertFtMin * 10) / 10,
+    medianVerticalSpeedFtPerHr: Math.round(medVertFtHr),
     weeklyClimbingFt: Math.round(weeklyGainFt),
-    longestRunMiles,
+    longestHikeRunMiles,
     confidence,
     reasoning,
     topSportTypes: topTypes(qualifying),

@@ -50,9 +50,9 @@ function AthleteCard({ record, rank }: { record: AthleteRecord; rank: number }) 
         {analysis && (
           <View style={styles.athleteSpeedBlock}>
             <Text style={styles.athleteSpeedValue}>
-              {(analysis.medianVerticalSpeedFtPerMin ?? 0).toFixed(1)}
+              {(analysis.medianVerticalSpeedFtPerHr ?? 0).toLocaleString()}
             </Text>
-            <Text style={styles.athleteSpeedUnit}>ft/min</Text>
+            <Text style={styles.athleteSpeedUnit}>ft/hr</Text>
           </View>
         )}
       </View>
@@ -70,8 +70,8 @@ function AthleteCard({ record, rank }: { record: AthleteRecord; rank: number }) 
         <View style={styles.athleteStats}>
           <StatPill label="Qualifying" value={`${analysis.qualifyingCount}`} />
           <StatPill label="Weekly climb" value={`${analysis.weeklyClimbingFt.toLocaleString()} ft`} />
-          {analysis.longestRunMiles >= 10 && (
-            <StatPill label="Longest run" value={`${analysis.longestRunMiles} mi`} />
+          {(analysis.longestHikeRunMiles ?? 0) > 0 && (
+            <StatPill label="Longest hike/run" value={`${analysis.longestHikeRunMiles} mi`} />
           )}
           <StatPill label="Confidence" value={analysis.confidence} />
         </View>
@@ -101,7 +101,7 @@ function AthleteCard({ record, rank }: { record: AthleteRecord; rank: number }) 
               </View>
               <View style={styles.effortRight}>
                 <Text style={styles.effortGain}>{e.elevationGainFt.toLocaleString()} ft</Text>
-                <Text style={styles.effortSpeed}>{(e.verticalSpeedFtPerMin ?? 0).toFixed(1)} ft/min</Text>
+                <Text style={styles.effortSpeed}>{(e.verticalSpeedFtPerHr ?? 0).toLocaleString()} ft/hr</Text>
               </View>
             </View>
           ))}
@@ -153,8 +153,8 @@ export default function SettingsScreen() {
   useEffect(() => { loadAthletes(); }, []);
 
   const sortedAthletes = [...athletes].sort((a, b) => {
-    const aSpeed = a.analysis?.medianVerticalSpeedFtPerMin ?? 0;
-    const bSpeed = b.analysis?.medianVerticalSpeedFtPerMin ?? 0;
+    const aSpeed = a.analysis?.medianVerticalSpeedFtPerHr ?? 0;
+    const bSpeed = b.analysis?.medianVerticalSpeedFtPerHr ?? 0;
     return bSpeed - aSpeed;
   });
 

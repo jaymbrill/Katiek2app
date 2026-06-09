@@ -35,7 +35,9 @@ function daysUntil(date: Date): number {
   return Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function AthleteRow({ record, rank }: { record: AthleteRecord; rank: number }) {
+// ── Leaderboard 1: Vertical Speed ──────────────────────────────────────────
+
+function SpeedRow({ record, rank }: { record: AthleteRecord; rank: number }) {
   const { syncingIds, errors, syncAthlete, removeAthlete } = useStravaStore();
   const [expanded, setExpanded] = useState(false);
   const syncing = syncingIds.includes(record.id);
@@ -50,7 +52,6 @@ function AthleteRow({ record, rank }: { record: AthleteRecord; rank: number }) {
 
   return (
     <View style={styles.athleteCard}>
-      {/* Header row */}
       <View style={styles.athleteRow}>
         <View style={[styles.rankBadge, { backgroundColor: rankColor + '22', borderColor: rankColor }]}>
           <Text style={[styles.rankText, { color: rankColor }]}>{rank}</Text>
@@ -63,28 +64,23 @@ function AthleteRow({ record, rank }: { record: AthleteRecord; rank: number }) {
         </View>
         {analysis && (
           <View style={styles.speedBlock}>
-            <Text style={styles.speedValue}>{(analysis.medianVerticalSpeedFtPerMin ?? 0).toFixed(1)}</Text>
-            <Text style={styles.speedUnit}>ft/min</Text>
+            <Text style={styles.speedValue}>{(analysis.medianVerticalSpeedFtPerHr ?? 0).toLocaleString()}</Text>
+            <Text style={styles.speedUnit}>ft/hr</Text>
           </View>
         )}
         {syncing && <ActivityIndicator size="small" color="#FC4C02" style={{ marginLeft: 8 }} />}
       </View>
 
-      {/* Stats pills */}
       {analysis && !syncing && (
         <View style={styles.pillRow}>
           <Pill label={`${analysis.qualifyingCount} qualifying`} />
           <Pill label={`${analysis.weeklyClimbingFt.toLocaleString()} ft/wk`} />
-          {analysis.longestRunMiles >= 10 && (
-            <Pill label={`${analysis.longestRunMiles} mi longest`} />
-          )}
           <Pill label={analysis.confidence} />
         </View>
       )}
 
       {error && !syncing && <Text style={styles.errorText}>{error}</Text>}
 
-      {/* Expand efforts */}
       {analysis && analysis.topEfforts.length > 0 && (
         <TouchableOpacity
           onPress={() => setExpanded((v) => !v)}
@@ -109,7 +105,7 @@ function AthleteRow({ record, rank }: { record: AthleteRecord; rank: number }) {
               </View>
               <View style={styles.effortRight}>
                 <Text style={styles.effortGain}>{e.elevationGainFt.toLocaleString()} ft</Text>
-                <Text style={styles.effortFtHr}>{(e.verticalSpeedFtPerMin ?? 0).toFixed(1)} ft/min</Text>
+                <Text style={styles.effortFtHr}>{(e.verticalSpeedFtPerHr ?? 0).toLocaleString()} ft/hr</Text>
               </View>
             </View>
           ))}
@@ -119,7 +115,6 @@ function AthleteRow({ record, rank }: { record: AthleteRecord; rank: number }) {
         </View>
       )}
 
-      {/* Actions */}
       <View style={styles.athleteActions}>
         <TouchableOpacity
           style={[styles.actionChip, syncing && styles.disabled]}
@@ -139,6 +134,36 @@ function AthleteRow({ record, rank }: { record: AthleteRecord; rank: number }) {
   );
 }
 
+// ── Leaderboard 2: Longest Hike/Run ────────────────────────────────────────
+
+function DistanceRow({ record, rank }: { record: AthleteRecord; rank: number }) {
+  const { analysis } = record;
+  const name = [record.firstname, record.lastname].filter(Boolean).join(' ') || 'Unknown Athlete';
+  const miles = analysis?.longestHikeRunMiles ?? 0;
+
+  const medalColors = ['#f59e0b', '#94a3b8', '#cd7c44'];
+  const rankColor = rank <= 3 ? medalColors[rank - 1] : '#334155';
+
+  return (
+    <View style={styles.distanceCard}>
+      <View style={[styles.rankBadge, { backgroundColor: rankColor + '22', borderColor: rankColor }]}>
+        <Text style={[styles.rankText, { color: rankColor }]}>{rank}</Text>
+      </View>
+      <Text style={styles.distanceName}>{name}</Text>
+      <View style={styles.distanceBlock}>
+        {miles > 0 ? (
+          <>
+            <Text style={styles.distanceValue}>{miles}</Text>
+            <Text style={styles.distanceUnit}>mi</Text>
+          </>
+        ) : (
+          <Text style={styles.distanceNone}>—</Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
 function Pill({ label }: { label: string }) {
   return (
     <View style={styles.pill}>
@@ -153,9 +178,13 @@ export default function GroupScreen() {
 
   useEffect(() => { loadAthletes(); }, []);
 
-  const sorted = [...athletes].sort(
-    (a, b) => (b.analysis?.medianVerticalSpeedFtPerMin ?? 0) - (a.analysis?.medianVerticalSpeedFtPerMin ?? 0)
+  const sortedBySpeed = [...athletes].sort(
+    (a, b) => (b.analysis?.medianVerticalSpeedFtPerHr ?? 0) - (a.analysis?.medianVerticalSpeedFtPerHr ?? 0)
   );
+
+  const sortedByDistance = [...athletes]
+    .filter((a) => (a.analysis?.longestHikeRunMiles ?? 0) > 0)
+    .sort((a, b) => (b.analysis?.longestHikeRunMiles ?? 0) - (a.analysis?.longestHikeRunMiles ?? 0));
 
   const days = daysUntil(EVENT_DATE);
   const daysLabel =
@@ -201,17 +230,14 @@ export default function GroupScreen() {
         </View>
       ) : null}
 
-      {/* Group leaderboard */}
+      {/* Leaderboard 1: Vertical Speed */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {sorted.length > 0
-              ? `${sorted.length} Athlete${sorted.length !== 1 ? 's' : ''} · Ranked by Vertical Speed`
-              : 'Group Roster'}
-          </Text>
+          <Text style={styles.sectionTitle}>Vertical Speed Leaderboard</Text>
+          <Text style={styles.sectionSub}>ft/hr · all elevating activities · 2-yr lookback</Text>
         </View>
 
-        {sorted.length === 0 && (
+        {sortedBySpeed.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>No athletes yet</Text>
             <Text style={styles.emptyBody}>
@@ -221,10 +247,35 @@ export default function GroupScreen() {
           </View>
         )}
 
-        {sorted.map((record, i) => (
-          <AthleteRow key={record.id} record={record} rank={i + 1} />
+        {sortedBySpeed.map((record, i) => (
+          <SpeedRow key={record.id} record={record} rank={i + 1} />
         ))}
+      </View>
 
+      {/* Leaderboard 2: Longest Hike/Run */}
+      {athletes.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Longest Hike / Run</Text>
+            <Text style={styles.sectionSub}>runs, hikes & walks only · no biking or skiing</Text>
+          </View>
+
+          {sortedByDistance.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyBody}>
+                No hikes or runs over 10 miles found yet. Hit Refresh after syncing.
+              </Text>
+            </View>
+          ) : (
+            sortedByDistance.map((record, i) => (
+              <DistanceRow key={record.id} record={record} rank={i + 1} />
+            ))
+          )}
+        </View>
+      )}
+
+      {/* Connect button */}
+      <View style={styles.connectSection}>
         <TouchableOpacity
           style={styles.connectBtn}
           onPress={() => Linking.openURL(getStravaAuthUrl())}
@@ -312,7 +363,6 @@ const styles = StyleSheet.create({
   },
   heroEyebrow: { color: '#475569', fontSize: 11, fontWeight: '700', letterSpacing: 4, marginBottom: 6 },
   heroTitle: { color: '#f1f5f9', fontSize: 64, fontWeight: '900', letterSpacing: 10, lineHeight: 68 },
-  heroSub: { color: '#3b82f6', fontSize: 13, fontWeight: '600', letterSpacing: 3, marginTop: 4, marginBottom: 18 },
   eventBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -342,6 +392,7 @@ const styles = StyleSheet.create({
     color: '#94a3b8', fontSize: 11, fontWeight: '700',
     textTransform: 'uppercase', letterSpacing: 1.5,
   },
+  sectionSub: { color: '#334155', fontSize: 11, marginTop: 3 },
 
   // Empty state
   emptyState: {
@@ -351,7 +402,7 @@ const styles = StyleSheet.create({
   emptyTitle: { color: '#f1f5f9', fontSize: 16, fontWeight: '700', marginBottom: 8 },
   emptyBody: { color: '#64748b', fontSize: 14, lineHeight: 21 },
 
-  // Athlete card
+  // Speed leaderboard card
   athleteCard: {
     backgroundColor: '#111827', borderRadius: 14, padding: 16,
     marginBottom: 10, borderWidth: 1, borderColor: '#1e293b',
@@ -400,6 +451,27 @@ const styles = StyleSheet.create({
   actionChipText: { color: '#94a3b8', fontSize: 12, fontWeight: '600' },
   removeChipText: { color: '#475569' },
 
+  // Distance leaderboard card
+  distanceCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#111827', borderRadius: 14, padding: 16,
+    marginBottom: 10, borderWidth: 1, borderColor: '#1e293b',
+  },
+  distanceName: { flex: 1, color: '#f1f5f9', fontSize: 15, fontWeight: '700', marginLeft: 12 },
+  distanceBlock: { flexDirection: 'row', gap: 3, alignItems: 'baseline' },
+  distanceValue: { color: '#34d399', fontSize: 22, fontWeight: '900' },
+  distanceUnit: { color: '#475569', fontSize: 10, fontWeight: '600' },
+  distanceNone: { color: '#334155', fontSize: 18, fontWeight: '700' },
+
+  // Connect
+  connectSection: { paddingHorizontal: 16, paddingTop: 8, marginBottom: 4 },
+  connectBtn: {
+    backgroundColor: '#FC4C02', borderRadius: 12, paddingVertical: 15,
+    alignItems: 'center', marginBottom: 8,
+  },
+  connectBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  connectNote: { color: '#334155', fontSize: 12, textAlign: 'center' },
+
   // Connecting / error banners
   connectingBanner: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 14,
@@ -418,16 +490,8 @@ const styles = StyleSheet.create({
   connectErrorTitle: { color: '#ef4444', fontSize: 14, fontWeight: '700', marginBottom: 4 },
   connectErrorMsg: { color: '#94a3b8', fontSize: 13, lineHeight: 18 },
 
-  // Connect
-  connectBtn: {
-    backgroundColor: '#FC4C02', borderRadius: 12, paddingVertical: 15,
-    alignItems: 'center', marginTop: 4, marginBottom: 8,
-  },
-  connectBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  connectNote: { color: '#334155', fontSize: 12, textAlign: 'center' },
-
   // Tool grid
-  toolGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  toolGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 },
   toolCard: {
     width: '47%',
     backgroundColor: '#111827', borderRadius: 14, padding: 16,
