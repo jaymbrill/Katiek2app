@@ -270,7 +270,7 @@ const DEFAULT_DATE = '2026-10-07';
 export default function GroupScreen() {
   const router = useRouter();
   const { athletes, loadAthletes, connecting, connectError } = useStravaStore();
-  const [filterDate, setFilterDate] = useState<string | null>(null); // null = All
+  const [filterDate, setFilterDate] = useState<string | null>(DEFAULT_DATE); // starts on default date
 
   useEffect(() => { loadAthletes(); }, []);
 
@@ -338,27 +338,30 @@ export default function GroupScreen() {
       {/* Date filter bar — only show if there are athletes */}
       {athletes.length > 0 && (
         <View style={styles.filterBar}>
-          <TouchableOpacity
-            style={[styles.filterChip, filterDate === null && styles.filterChipActive]}
-            onPress={() => setFilterDate(null)}
-          >
-            <Text style={[styles.filterChipText, filterDate === null && styles.filterChipTextActive]}>
-              All
-            </Text>
-          </TouchableOpacity>
-          {uniqueDates.map((d) => {
-            const label = new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            const active = filterDate === d;
-            return (
-              <TouchableOpacity
-                key={d}
-                style={[styles.filterChip, active && styles.filterChipActive]}
-                onPress={() => setFilterDate(active ? null : d)}
-              >
-                <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{label}</Text>
-              </TouchableOpacity>
-            );
-          })}
+          <Text style={styles.filterLabel}>Show group:</Text>
+          <View style={styles.filterChips}>
+            <TouchableOpacity
+              style={[styles.filterChip, filterDate === null && styles.filterChipActive]}
+              onPress={() => setFilterDate(null)}
+            >
+              <Text style={[styles.filterChipText, filterDate === null && styles.filterChipTextActive]}>
+                All Dates
+              </Text>
+            </TouchableOpacity>
+            {uniqueDates.map((d) => {
+              const label = new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+              const active = filterDate === d;
+              return (
+                <TouchableOpacity
+                  key={d}
+                  style={[styles.filterChip, active && styles.filterChipActive]}
+                  onPress={() => setFilterDate(active ? null : d)}
+                >
+                  <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
       )}
 
@@ -575,15 +578,21 @@ const styles = StyleSheet.create({
   effortCriteria: { color: '#334155', fontSize: 11, marginTop: 8, lineHeight: 17 },
 
   filterBar: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4,
+    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8,
+    borderBottomWidth: 1, borderBottomColor: '#1e293b',
   },
+  filterLabel: {
+    color: '#64748b', fontSize: 11, fontWeight: '700',
+    textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 10,
+  },
+  filterChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   filterChip: {
-    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7,
-    backgroundColor: '#111827', borderWidth: 1, borderColor: '#1e293b',
+    borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#334155',
   },
   filterChipActive: { backgroundColor: '#1e3a5f', borderColor: '#3b82f6' },
-  filterChipText: { color: '#475569', fontSize: 13, fontWeight: '600' },
-  filterChipTextActive: { color: '#60a5fa' },
+  filterChipText: { color: '#94a3b8', fontSize: 13, fontWeight: '600' },
+  filterChipTextActive: { color: '#93c5fd', fontWeight: '700' },
 
   tripDateRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, marginBottom: 2 },
   tripDateBtn: { paddingVertical: 4 },
