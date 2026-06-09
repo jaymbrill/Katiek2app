@@ -36,25 +36,42 @@ interface StravaStore {
   syncAthlete: (athleteId: string) => Promise<void>;
 }
 
-async function apiFetch(path: string, options?: RequestInit): Promise<any> {
+async function apiFetch(path: string, options?: RequestInit, retries = 3): Promise<any> {
   if (!API_URL) throw new Error('API URL not configured — set EXPO_PUBLIC_API_URL in Render and redeploy the static site.');
   if (!API_URL.startsWith('http')) throw new Error(`EXPO_PUBLIC_API_URL must start with https:// — current value: "${API_URL}"`);
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
-  });
-  // For error responses, try to extract the error message but don't crash
-  if (!res.ok) {
-    const json = await res.json().catch(() => ({}));
-    throw new Error(json.error ?? `API error ${res.status}`);
-  }
-  // For success responses, parse body as text first so we get a clear error if it's empty or non-JSON
-  const text = await res.text();
-  if (!text) throw new Error(`API at ${API_URL}${path} returned empty response — check the service is running at /health`);
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error(`API returned non-JSON (${text.slice(0, 80)}…) — is EXPO_PUBLIC_API_URL pointing at the right service?`);
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(`${API_URL}${path}`, {
+        ...options,
+        headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error ?? `API error ${res.status}`);
+      }
+      const text = await res.text();
+      if (!text) throw new Error(`API returned empty response — check the service is running at /health`);
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error(`API returned non-JSON — is EXPO_PUBLIC_API_URL correct? Got: ${text.slice(0, 80)}`);
+      }
+    } catch (e: any) {
+      const isNetworkError = e?.message === 'Failed to fetch' || e?.name === 'TypeError';
+      if (isNetworkError && attempt < retries) {
+        // Service is likely cold-starting — wait and retry
+        await new Promise((r) => setTimeout(r, 5000 * attempt));
+        continue;
+      }
+      if (isNetworkError) {
+        throw new Error(
+          'Cannot reach the API — the service may be starting up (Render free tier takes ~30s). ' +
+          'Wait a moment and try again, or visit /health on the API URL to wake it up.'
+        );
+      }
+      throw e;
+    }
   }
 }
 
@@ -92,6 +109,7 @@ export const useStravaStore = create<StravaStore>((set, get) => ({
 
   loadAthletes: async () => {
     try {
+      // Also wakes up the API if it's cold-starting on Render free tier
       const data = await apiFetch('/athletes');
       const athletes: AthleteRecord[] = Array.isArray(data)
         ? data.filter((a: any) => a?.id && a?.firstname)

@@ -185,7 +185,7 @@ export default function GroupScreen() {
           <ActivityIndicator size="small" color="#FC4C02" />
           <View style={styles.connectingText}>
             <Text style={styles.connectingTitle}>Connecting your Strava…</Text>
-            <Text style={styles.connectingSub}>Fetching 2 years of activity data — this takes 15–30 seconds</Text>
+            <Text style={styles.connectingSub}>Fetching 2 years of activity data. If this is your first connection today, the server may need 30s to wake up — hang tight.</Text>
           </View>
         </View>
       )}
