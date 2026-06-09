@@ -223,7 +223,8 @@ app.get('/athletes', requireDb, async (_req, res) => {
   }
 });
 
-// Add/update athlete — receives token from client OAuth, stores it, syncs immediately
+// Add/update athlete — stores token immediately, returns partial record,
+// syncs Strava data in the background (avoids Render's 30s request timeout)
 app.post('/athletes', requireDb, async (req, res) => {
   const { token } = req.body;
   if (!token?.athlete?.id || !token.access_token || !token.refresh_token) {
@@ -241,8 +242,12 @@ app.post('/athletes', requireDb, async (req, res) => {
              access_token=$5, refresh_token=$6, expires_at=$7`,
       [id, firstname, lastname, profile, token.access_token, token.refresh_token, token.expires_at]
     );
-    const result = await syncAthlete(id);
-    res.json(result);
+
+    // Return immediately so the client isn't blocked waiting for Strava fetch
+    res.json({ id, firstname, lastname, profile, analysis: null, lastSyncedAt: null });
+
+    // Sync in background — client polls GET /athletes until analysis appears
+    syncAthlete(id).catch((e) => console.error(`Background sync failed for ${id}:`, e.message));
   } catch (e) {
     console.error('POST /athletes', e);
     res.status(500).json({ error: e.message });

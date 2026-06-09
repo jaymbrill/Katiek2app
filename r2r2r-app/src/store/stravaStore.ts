@@ -44,6 +44,30 @@ async function apiFetch(path: string, options?: RequestInit): Promise<any> {
   return json;
 }
 
+// Poll GET /athletes until the given athlete has analysis populated
+async function pollForAnalysis(athleteId: string) {
+  const MAX = 40; // ~3 min at 5s intervals
+  for (let i = 0; i < MAX; i++) {
+    await new Promise((r) => setTimeout(r, 5000));
+    try {
+      const data = await apiFetch('/athletes');
+      const updated = Array.isArray(data) ? data.find((a: any) => a?.id === athleteId) : null;
+      if (updated?.analysis) {
+        useStravaStore.setState((s) => ({
+          athletes: s.athletes.map((a) => (a.id === athleteId ? updated : a)),
+          syncingIds: s.syncingIds.filter((id) => id !== athleteId),
+        }));
+        return;
+      }
+    } catch {}
+  }
+  // Timed out
+  useStravaStore.setState((s) => ({
+    syncingIds: s.syncingIds.filter((id) => id !== athleteId),
+    errors: { ...s.errors, [athleteId]: 'Analysis timed out — tap Refresh to try again' },
+  }));
+}
+
 export const useStravaStore = create<StravaStore>((set, get) => ({
   athletes: [],
   syncingIds: [],
@@ -83,12 +107,15 @@ export const useStravaStore = create<StravaStore>((set, get) => ({
       if (!record?.id || !record?.firstname) {
         throw new Error(`API returned invalid athlete data: ${JSON.stringify(record)}`);
       }
+      // Add the athlete immediately (analysis is null until background sync finishes)
       set((s) => ({
         athletes: [...s.athletes.filter((a) => a.id !== record.id), record],
         connecting: false,
         connectError: '',
-        syncingIds: s.syncingIds.filter((i) => i !== id),
+        syncingIds: record.analysis ? s.syncingIds : [...s.syncingIds, record.id],
       }));
+      // If analysis isn't ready yet, poll until the background sync completes
+      if (!record.analysis) pollForAnalysis(record.id);
     } catch (e: any) {
       const msg = e?.message ?? 'Failed to connect Strava';
       console.error('addAthlete failed:', msg);
