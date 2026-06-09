@@ -200,7 +200,14 @@ function toPublic(row) {
 // ── Express ────────────────────────────────────────────────────────────────
 
 const app = express();
-app.use(cors({ origin: ALLOWED_ORIGIN, methods: ['GET', 'POST', 'DELETE', 'OPTIONS'] }));
+
+// Allow all origins — tokens are stored server-side, no sensitive data is exposed to clients
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+}));
+app.options('*', cors()); // respond to preflight for all routes
 app.use(express.json());
 
 app.get('/health', (_req, res) => res.json({ ok: true, db: dbReady }));
