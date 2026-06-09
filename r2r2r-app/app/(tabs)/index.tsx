@@ -140,16 +140,25 @@ function DistanceRow({ record, rank }: { record: AthleteRecord; rank: number }) 
   const { analysis } = record;
   const name = [record.firstname, record.lastname].filter(Boolean).join(' ') || 'Unknown Athlete';
   const miles = analysis?.longestHikeRunMiles ?? 0;
+  const synced = analysis != null;
 
   const medalColors = ['#f59e0b', '#94a3b8', '#cd7c44'];
-  const rankColor = rank <= 3 ? medalColors[rank - 1] : '#334155';
+  const rankColor = rank <= 3 && miles > 0 ? medalColors[rank - 1] : '#334155';
 
   return (
     <View style={styles.distanceCard}>
       <View style={[styles.rankBadge, { backgroundColor: rankColor + '22', borderColor: rankColor }]}>
         <Text style={[styles.rankText, { color: rankColor }]}>{rank}</Text>
       </View>
-      <Text style={styles.distanceName}>{name}</Text>
+      <View style={styles.distanceInfo}>
+        <Text style={styles.distanceName}>{name}</Text>
+        {synced && miles === 0 && (
+          <Text style={styles.distanceNote}>no hike/run over 10 mi on record</Text>
+        )}
+        {!synced && (
+          <Text style={styles.distanceNote}>syncing…</Text>
+        )}
+      </View>
       <View style={styles.distanceBlock}>
         {miles > 0 ? (
           <>
@@ -182,9 +191,9 @@ export default function GroupScreen() {
     (a, b) => (b.analysis?.medianVerticalSpeedFtPerHr ?? 0) - (a.analysis?.medianVerticalSpeedFtPerHr ?? 0)
   );
 
-  const sortedByDistance = [...athletes]
-    .filter((a) => (a.analysis?.longestHikeRunMiles ?? 0) > 0)
-    .sort((a, b) => (b.analysis?.longestHikeRunMiles ?? 0) - (a.analysis?.longestHikeRunMiles ?? 0));
+  const sortedByDistance = [...athletes].sort(
+    (a, b) => (b.analysis?.longestHikeRunMiles ?? 0) - (a.analysis?.longestHikeRunMiles ?? 0)
+  );
 
   const days = daysUntil(EVENT_DATE);
   const daysLabel =
@@ -260,17 +269,9 @@ export default function GroupScreen() {
             <Text style={styles.sectionSub}>runs, hikes & walks only · no biking or skiing</Text>
           </View>
 
-          {sortedByDistance.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyBody}>
-                No hikes or runs over 10 miles found yet. Hit Refresh after syncing.
-              </Text>
-            </View>
-          ) : (
-            sortedByDistance.map((record, i) => (
-              <DistanceRow key={record.id} record={record} rank={i + 1} />
-            ))
-          )}
+          {sortedByDistance.map((record, i) => (
+            <DistanceRow key={record.id} record={record} rank={i + 1} />
+          ))}
         </View>
       )}
 
@@ -457,7 +458,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#111827', borderRadius: 14, padding: 16,
     marginBottom: 10, borderWidth: 1, borderColor: '#1e293b',
   },
-  distanceName: { flex: 1, color: '#f1f5f9', fontSize: 15, fontWeight: '700', marginLeft: 12 },
+  distanceInfo: { flex: 1, marginLeft: 12 },
+  distanceName: { color: '#f1f5f9', fontSize: 15, fontWeight: '700' },
+  distanceNote: { color: '#475569', fontSize: 11, marginTop: 2 },
   distanceBlock: { flexDirection: 'row', gap: 3, alignItems: 'baseline' },
   distanceValue: { color: '#34d399', fontSize: 22, fontWeight: '900' },
   distanceUnit: { color: '#475569', fontSize: 10, fontWeight: '600' },
