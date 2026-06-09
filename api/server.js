@@ -30,6 +30,10 @@ async function initDb() {
       created_at    TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  await pool.query(`
+    ALTER TABLE athletes
+    ADD COLUMN IF NOT EXISTS trip_date TEXT NOT NULL DEFAULT '2026-10-07'
+  `);
 }
 
 // ── Strava helpers ─────────────────────────────────────────────────────────
@@ -226,6 +230,7 @@ function toPublic(row) {
     firstname: row.firstname,
     lastname: row.lastname,
     profile: row.profile,
+    tripDate: row.trip_date ?? '2026-10-07',
     analysis: row.analysis ?? null,
     lastSyncedAt: row.last_synced_at ? Number(row.last_synced_at) : null,
   };
@@ -238,7 +243,7 @@ const app = express();
 // Allow all origins — tokens are stored server-side, no sensitive data is exposed to clients
 app.use(cors({
   origin: '*',
-  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type'],
 }));
 app.options('*', cors()); // respond to preflight for all routes
@@ -255,7 +260,7 @@ function requireDb(req, res, next) {
 app.get('/athletes', requireDb, async (_req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT id, firstname, lastname, profile, analysis, last_synced_at FROM athletes ORDER BY created_at'
+      'SELECT id, firstname, lastname, profile, trip_date, analysis, last_synced_at FROM athletes ORDER BY created_at'
     );
     res.json(rows.map(toPublic));
   } catch (e) {
@@ -273,19 +278,20 @@ app.post('/athletes', requireDb, async (req, res) => {
   }
   const id = String(token.athlete.id);
   const { firstname, lastname, profile = '' } = token.athlete;
+  const tripDate = req.body.tripDate ?? '2026-10-07';
 
   try {
     await pool.query(
-      `INSERT INTO athletes (id, firstname, lastname, profile, access_token, refresh_token, expires_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
+      `INSERT INTO athletes (id, firstname, lastname, profile, access_token, refresh_token, expires_at, trip_date)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        ON CONFLICT (id) DO UPDATE
          SET firstname=$2, lastname=$3, profile=$4,
-             access_token=$5, refresh_token=$6, expires_at=$7`,
-      [id, firstname, lastname, profile, token.access_token, token.refresh_token, token.expires_at]
+             access_token=$5, refresh_token=$6, expires_at=$7, trip_date=$8`,
+      [id, firstname, lastname, profile, token.access_token, token.refresh_token, token.expires_at, tripDate]
     );
 
     // Return immediately so the client isn't blocked waiting for Strava fetch
-    res.json({ id, firstname, lastname, profile, analysis: null, lastSyncedAt: null });
+    res.json({ id, firstname, lastname, profile, tripDate, analysis: null, lastSyncedAt: null });
 
     // Sync in background — client polls GET /athletes until analysis appears
     syncAthlete(id).catch((e) => console.error(`Background sync failed for ${id}:`, e.message));
@@ -303,6 +309,21 @@ app.post('/athletes/:id/sync', requireDb, async (req, res) => {
     res.json(result);
   } catch (e) {
     console.error('POST /athletes/:id/sync', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Update an athlete's trip date
+app.patch('/athletes/:id/trip-date', requireDb, async (req, res) => {
+  const { tripDate } = req.body;
+  if (!tripDate || !/^\d{4}-\d{2}-\d{2}$/.test(tripDate)) {
+    return res.status(400).json({ error: 'Invalid tripDate — expected YYYY-MM-DD' });
+  }
+  try {
+    await pool.query('UPDATE athletes SET trip_date=$1 WHERE id=$2', [tripDate, req.params.id]);
+    res.json({ ok: true, tripDate });
+  } catch (e) {
+    console.error('PATCH /athletes/:id/trip-date', e);
     res.status(500).json({ error: e.message });
   }
 });

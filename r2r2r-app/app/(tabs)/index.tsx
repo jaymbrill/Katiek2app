@@ -7,6 +7,8 @@ import {
   StyleSheet,
   Linking,
   ActivityIndicator,
+  Platform,
+  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useStravaStore } from '../../src/store/stravaStore';
@@ -38,8 +40,10 @@ function daysUntil(date: Date): number {
 // ── Leaderboard 1: Vertical Speed ──────────────────────────────────────────
 
 function SpeedRow({ record, rank }: { record: AthleteRecord; rank: number }) {
-  const { syncingIds, errors, syncAthlete, removeAthlete } = useStravaStore();
+  const { syncingIds, errors, syncAthlete, removeAthlete, updateTripDate } = useStravaStore();
   const [expanded, setExpanded] = useState(false);
+  const [editingDate, setEditingDate] = useState(false);
+  const [dateInput, setDateInput] = useState(record.tripDate ?? '2026-10-07');
   const syncing = syncingIds.includes(record.id);
   const error = errors[record.id];
   const { analysis } = record;
@@ -115,6 +119,42 @@ function SpeedRow({ record, rank }: { record: AthleteRecord; rank: number }) {
           </Text>
         </View>
       )}
+
+      {/* Trip date */}
+      <View style={styles.tripDateRow}>
+        {editingDate ? (
+          <>
+            <TextInput
+              style={styles.tripDateInput}
+              value={dateInput}
+              onChangeText={setDateInput}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#475569"
+              accessibilityLabel="Trip date"
+            />
+            <TouchableOpacity
+              style={styles.tripDateSave}
+              onPress={() => {
+                if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+                  updateTripDate(record.id, dateInput);
+                  setEditingDate(false);
+                }
+              }}
+            >
+              <Text style={styles.tripDateSaveText}>Save</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setEditingDate(false)} style={styles.tripDateCancel}>
+              <Text style={styles.tripDateCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <TouchableOpacity onPress={() => { setDateInput(record.tripDate ?? '2026-10-07'); setEditingDate(true); }} style={styles.tripDateBtn}>
+            <Text style={styles.tripDateLabel}>
+              📅 {new Date((record.tripDate ?? '2026-10-07') + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       <View style={styles.athleteActions}>
         <TouchableOpacity
@@ -225,17 +265,29 @@ function Pill({ label }: { label: string }) {
   );
 }
 
+const DEFAULT_DATE = '2026-10-07';
+
 export default function GroupScreen() {
   const router = useRouter();
   const { athletes, loadAthletes, connecting, connectError } = useStravaStore();
+  const [filterDate, setFilterDate] = useState<string | null>(null); // null = All
 
   useEffect(() => { loadAthletes(); }, []);
 
-  const sortedBySpeed = [...athletes].sort(
+  // Unique dates across all athletes
+  const uniqueDates = [...new Set(
+    athletes.map((a) => a.tripDate ?? DEFAULT_DATE)
+  )].sort();
+
+  const visibleAthletes = filterDate
+    ? athletes.filter((a) => (a.tripDate ?? DEFAULT_DATE) === filterDate)
+    : athletes;
+
+  const sortedBySpeed = [...visibleAthletes].sort(
     (a, b) => (b.analysis?.medianVerticalSpeedFtPerHr ?? 0) - (a.analysis?.medianVerticalSpeedFtPerHr ?? 0)
   );
 
-  const sortedByDistance = [...athletes].sort(
+  const sortedByDistance = [...visibleAthletes].sort(
     (a, b) => (b.analysis?.longestHikeRunMiles ?? 0) - (a.analysis?.longestHikeRunMiles ?? 0)
   );
 
@@ -283,10 +335,41 @@ export default function GroupScreen() {
         </View>
       ) : null}
 
+      {/* Date filter bar — only show if there are athletes */}
+      {athletes.length > 0 && (
+        <View style={styles.filterBar}>
+          <TouchableOpacity
+            style={[styles.filterChip, filterDate === null && styles.filterChipActive]}
+            onPress={() => setFilterDate(null)}
+          >
+            <Text style={[styles.filterChipText, filterDate === null && styles.filterChipTextActive]}>
+              All
+            </Text>
+          </TouchableOpacity>
+          {uniqueDates.map((d) => {
+            const label = new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const active = filterDate === d;
+            return (
+              <TouchableOpacity
+                key={d}
+                style={[styles.filterChip, active && styles.filterChipActive]}
+                onPress={() => setFilterDate(active ? null : d)}
+              >
+                <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
       {/* Leaderboard 1: Vertical Speed */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Vertical Speed Leaderboard</Text>
+          <Text style={styles.sectionTitle}>
+            {filterDate
+              ? `${sortedBySpeed.length} Athletes · ${new Date(filterDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+              : 'Vertical Speed Leaderboard'}
+          </Text>
           <Text style={styles.sectionSub}>ft/hr · all elevating activities · 2-yr lookback</Text>
         </View>
 
@@ -306,10 +389,14 @@ export default function GroupScreen() {
       </View>
 
       {/* Leaderboard 2: Longest Hike/Run */}
-      {athletes.length > 0 && (
+      {visibleAthletes.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Longest Hike / Run</Text>
+            <Text style={styles.sectionTitle}>
+              {filterDate
+                ? `${sortedByDistance.length} Athletes · Longest Hike/Run · ${new Date(filterDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                : 'Longest Hike / Run'}
+            </Text>
             <Text style={styles.sectionSub}>runs, hikes & walks only · no biking or skiing</Text>
           </View>
 
@@ -486,6 +573,31 @@ const styles = StyleSheet.create({
   effortGain: { color: '#FC4C02', fontSize: 13, fontWeight: '700' },
   effortFtHr: { color: '#475569', fontSize: 11, marginTop: 1 },
   effortCriteria: { color: '#334155', fontSize: 11, marginTop: 8, lineHeight: 17 },
+
+  filterBar: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4,
+  },
+  filterChip: {
+    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7,
+    backgroundColor: '#111827', borderWidth: 1, borderColor: '#1e293b',
+  },
+  filterChipActive: { backgroundColor: '#1e3a5f', borderColor: '#3b82f6' },
+  filterChipText: { color: '#475569', fontSize: 13, fontWeight: '600' },
+  filterChipTextActive: { color: '#60a5fa' },
+
+  tripDateRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, marginBottom: 2 },
+  tripDateBtn: { paddingVertical: 4 },
+  tripDateLabel: { color: '#475569', fontSize: 12 },
+  tripDateInput: {
+    flex: 1, backgroundColor: '#0f172a', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6,
+    color: '#f1f5f9', fontSize: 13, borderWidth: 1, borderColor: '#334155',
+  },
+  tripDateSave: {
+    backgroundColor: '#1d4ed8', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 6,
+  },
+  tripDateSaveText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  tripDateCancel: { paddingHorizontal: 8, paddingVertical: 6 },
+  tripDateCancelText: { color: '#475569', fontSize: 12 },
 
   athleteActions: { flexDirection: 'row', gap: 8, marginTop: 10 },
   actionChip: {

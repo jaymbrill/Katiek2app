@@ -18,6 +18,7 @@ export interface AthleteRecord {
   firstname: string;
   lastname: string;
   profile: string;
+  tripDate: string;
   analysis: StravaAnalysisResult | null;
   lastSyncedAt: number | null;
 }
@@ -34,6 +35,7 @@ interface StravaStore {
   addAthlete: (token: StravaToken) => Promise<void>;
   removeAthlete: (athleteId: string) => Promise<void>;
   syncAthlete: (athleteId: string) => Promise<void>;
+  updateTripDate: (athleteId: string, tripDate: string) => Promise<void>;
 }
 
 async function apiFetch(path: string, options?: RequestInit, retries = 3): Promise<any> {
@@ -179,6 +181,20 @@ export const useStravaStore = create<StravaStore>((set, get) => ({
         syncingIds: s.syncingIds.filter((i) => i !== athleteId),
         errors: { ...s.errors, [athleteId]: msg },
       }));
+    }
+  },
+
+  updateTripDate: async (athleteId, tripDate) => {
+    set((s) => ({
+      athletes: s.athletes.map((a) => a.id === athleteId ? { ...a, tripDate } : a),
+    }));
+    try {
+      await apiFetch(`/athletes/${athleteId}/trip-date`, {
+        method: 'PATCH',
+        body: JSON.stringify({ tripDate }),
+      });
+    } catch (e: any) {
+      console.warn('updateTripDate failed:', e?.message);
     }
   },
 }));
