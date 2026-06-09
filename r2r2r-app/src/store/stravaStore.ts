@@ -38,10 +38,14 @@ async function apiFetch(path: string, options?: RequestInit): Promise<any> {
     const json = await res.json().catch(() => ({}));
     throw new Error(json.error ?? `API error ${res.status}`);
   }
-  // For success responses, let JSON parse fail loudly — a non-JSON 200 means the API isn't ready
-  const json = await res.json();
-  if (!json || typeof json !== 'object') throw new Error('API returned unexpected response');
-  return json;
+  // For success responses, parse body as text first so we get a clear error if it's empty or non-JSON
+  const text = await res.text();
+  if (!text) throw new Error(`API at ${API_URL}${path} returned empty response — check the service is running at /health`);
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`API returned non-JSON (${text.slice(0, 80)}…) — is EXPO_PUBLIC_API_URL pointing at the right service?`);
+  }
 }
 
 // Poll GET /athletes until the given athlete has analysis populated
