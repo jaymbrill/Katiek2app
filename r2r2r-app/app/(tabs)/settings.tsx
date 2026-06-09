@@ -50,7 +50,7 @@ function AthleteCard({ record, rank }: { record: AthleteRecord; rank: number }) 
         {analysis && (
           <View style={styles.athleteSpeedBlock}>
             <Text style={styles.athleteSpeedValue}>
-              {analysis.medianVerticalSpeedFtPerMin.toFixed(1)}
+              {(analysis.medianVerticalSpeedFtPerMin ?? 0).toFixed(1)}
             </Text>
             <Text style={styles.athleteSpeedUnit}>ft/min</Text>
           </View>
@@ -101,7 +101,7 @@ function AthleteCard({ record, rank }: { record: AthleteRecord; rank: number }) 
               </View>
               <View style={styles.effortRight}>
                 <Text style={styles.effortGain}>{e.elevationGainFt.toLocaleString()} ft</Text>
-                <Text style={styles.effortSpeed}>{e.verticalSpeedFtPerMin.toFixed(1)} ft/min</Text>
+                <Text style={styles.effortSpeed}>{(e.verticalSpeedFtPerMin ?? 0).toFixed(1)} ft/min</Text>
               </View>
             </View>
           ))}

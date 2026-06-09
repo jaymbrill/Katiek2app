@@ -63,7 +63,7 @@ function AthleteRow({ record, rank }: { record: AthleteRecord; rank: number }) {
         </View>
         {analysis && (
           <View style={styles.speedBlock}>
-            <Text style={styles.speedValue}>{analysis.medianVerticalSpeedFtPerMin.toFixed(1)}</Text>
+            <Text style={styles.speedValue}>{(analysis.medianVerticalSpeedFtPerMin ?? 0).toFixed(1)}</Text>
             <Text style={styles.speedUnit}>ft/min</Text>
           </View>
         )}
@@ -109,7 +109,7 @@ function AthleteRow({ record, rank }: { record: AthleteRecord; rank: number }) {
               </View>
               <View style={styles.effortRight}>
                 <Text style={styles.effortGain}>{e.elevationGainFt.toLocaleString()} ft</Text>
-                <Text style={styles.effortFtHr}>{e.verticalSpeedFtPerMin.toFixed(1)} ft/min</Text>
+                <Text style={styles.effortFtHr}>{(e.verticalSpeedFtPerMin ?? 0).toFixed(1)} ft/min</Text>
               </View>
             </View>
           ))}
