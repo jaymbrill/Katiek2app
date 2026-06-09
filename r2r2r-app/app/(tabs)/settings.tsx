@@ -50,9 +50,9 @@ function AthleteCard({ record, rank }: { record: AthleteRecord; rank: number }) 
         {analysis && (
           <View style={styles.athleteSpeedBlock}>
             <Text style={styles.athleteSpeedValue}>
-              {analysis.medianVerticalSpeedFtPerHr.toLocaleString()}
+              {analysis.medianVerticalSpeedFtPerMin.toFixed(1)}
             </Text>
-            <Text style={styles.athleteSpeedUnit}>ft/hr</Text>
+            <Text style={styles.athleteSpeedUnit}>ft/min</Text>
           </View>
         )}
       </View>
@@ -70,6 +70,9 @@ function AthleteCard({ record, rank }: { record: AthleteRecord; rank: number }) 
         <View style={styles.athleteStats}>
           <StatPill label="Qualifying" value={`${analysis.qualifyingCount}`} />
           <StatPill label="Weekly climb" value={`${analysis.weeklyClimbingFt.toLocaleString()} ft`} />
+          {analysis.longestRunMiles >= 10 && (
+            <StatPill label="Longest run" value={`${analysis.longestRunMiles} mi`} />
+          )}
           <StatPill label="Confidence" value={analysis.confidence} />
         </View>
       )}
@@ -98,7 +101,7 @@ function AthleteCard({ record, rank }: { record: AthleteRecord; rank: number }) 
               </View>
               <View style={styles.effortRight}>
                 <Text style={styles.effortGain}>{e.elevationGainFt.toLocaleString()} ft</Text>
-                <Text style={styles.effortSpeed}>{e.verticalSpeedFtPerHr.toLocaleString()} ft/hr</Text>
+                <Text style={styles.effortSpeed}>{e.verticalSpeedFtPerMin.toFixed(1)} ft/min</Text>
               </View>
             </View>
           ))}
@@ -149,10 +152,9 @@ export default function SettingsScreen() {
 
   useEffect(() => { loadAthletes(); }, []);
 
-  // Sort athletes by median ft/hr descending
   const sortedAthletes = [...athletes].sort((a, b) => {
-    const aSpeed = a.analysis?.medianVerticalSpeedFtPerHr ?? 0;
-    const bSpeed = b.analysis?.medianVerticalSpeedFtPerHr ?? 0;
+    const aSpeed = a.analysis?.medianVerticalSpeedFtPerMin ?? 0;
+    const bSpeed = b.analysis?.medianVerticalSpeedFtPerMin ?? 0;
     return bSpeed - aSpeed;
   });
 

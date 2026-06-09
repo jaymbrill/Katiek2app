@@ -51,7 +51,7 @@ export default function SetupScreen() {
   const athletes = useStravaStore((s) => s.athletes);
   // Use the highest-ranked athlete's analysis to pre-fill fitness level
   const analysis = [...athletes]
-    .sort((a, b) => (b.analysis?.medianVerticalSpeedFtPerHr ?? 0) - (a.analysis?.medianVerticalSpeedFtPerHr ?? 0))
+    .sort((a, b) => (b.analysis?.medianVerticalSpeedFtPerMin ?? 0) - (a.analysis?.medianVerticalSpeedFtPerMin ?? 0))
     [0]?.analysis ?? null;
 
   const [tripDate, setTripDate] = useState('');

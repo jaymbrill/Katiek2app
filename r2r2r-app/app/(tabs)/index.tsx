@@ -63,8 +63,8 @@ function AthleteRow({ record, rank }: { record: AthleteRecord; rank: number }) {
         </View>
         {analysis && (
           <View style={styles.speedBlock}>
-            <Text style={styles.speedValue}>{analysis.medianVerticalSpeedFtPerHr.toLocaleString()}</Text>
-            <Text style={styles.speedUnit}>ft/hr</Text>
+            <Text style={styles.speedValue}>{analysis.medianVerticalSpeedFtPerMin.toFixed(1)}</Text>
+            <Text style={styles.speedUnit}>ft/min</Text>
           </View>
         )}
         {syncing && <ActivityIndicator size="small" color="#FC4C02" style={{ marginLeft: 8 }} />}
@@ -75,6 +75,9 @@ function AthleteRow({ record, rank }: { record: AthleteRecord; rank: number }) {
         <View style={styles.pillRow}>
           <Pill label={`${analysis.qualifyingCount} qualifying`} />
           <Pill label={`${analysis.weeklyClimbingFt.toLocaleString()} ft/wk`} />
+          {analysis.longestRunMiles >= 10 && (
+            <Pill label={`${analysis.longestRunMiles} mi longest`} />
+          )}
           <Pill label={analysis.confidence} />
         </View>
       )}
@@ -106,7 +109,7 @@ function AthleteRow({ record, rank }: { record: AthleteRecord; rank: number }) {
               </View>
               <View style={styles.effortRight}>
                 <Text style={styles.effortGain}>{e.elevationGainFt.toLocaleString()} ft</Text>
-                <Text style={styles.effortFtHr}>{e.verticalSpeedFtPerHr.toLocaleString()} ft/hr</Text>
+                <Text style={styles.effortFtHr}>{e.verticalSpeedFtPerMin.toFixed(1)} ft/min</Text>
               </View>
             </View>
           ))}
@@ -151,7 +154,7 @@ export default function GroupScreen() {
   useEffect(() => { loadAthletes(); }, []);
 
   const sorted = [...athletes].sort(
-    (a, b) => (b.analysis?.medianVerticalSpeedFtPerHr ?? 0) - (a.analysis?.medianVerticalSpeedFtPerHr ?? 0)
+    (a, b) => (b.analysis?.medianVerticalSpeedFtPerMin ?? 0) - (a.analysis?.medianVerticalSpeedFtPerMin ?? 0)
   );
 
   const days = daysUntil(EVENT_DATE);
