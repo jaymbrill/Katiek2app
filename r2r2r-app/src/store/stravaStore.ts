@@ -2,7 +2,16 @@ import { create } from 'zustand';
 import type { StravaToken } from '../lib/strava';
 import type { StravaAnalysisResult } from '../lib/stravaAnalysis';
 
-const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+const RAW_API_URL = process.env.EXPO_PUBLIC_API_URL ?? '';
+const API_URL = RAW_API_URL.replace(/\/$/, '');
+
+// Warn at startup if the URL is missing the protocol (a common misconfiguration)
+if (RAW_API_URL && !RAW_API_URL.startsWith('http')) {
+  console.error(
+    `EXPO_PUBLIC_API_URL is missing the protocol: "${RAW_API_URL}". ` +
+    'It must start with https:// — update the env var in Render and redeploy the static site.'
+  );
+}
 
 export interface AthleteRecord {
   id: string;
@@ -29,6 +38,7 @@ interface StravaStore {
 
 async function apiFetch(path: string, options?: RequestInit): Promise<any> {
   if (!API_URL) throw new Error('API URL not configured — set EXPO_PUBLIC_API_URL in Render and redeploy the static site.');
+  if (!API_URL.startsWith('http')) throw new Error(`EXPO_PUBLIC_API_URL must start with https:// — current value: "${API_URL}"`);
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
