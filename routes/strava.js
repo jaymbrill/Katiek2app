@@ -95,17 +95,21 @@ router.post('/preferences', (req, res) => {
 });
 
 // Twilio inbound SMS webhook
-router.post('/sms/inbound', (req, res) => {
+router.post('/sms/inbound', async (req, res) => {
   const body = req.body.Body || '';
   const from = req.body.From || '';
 
   console.log(`[SMS] Inbound from ${from}: ${body}`);
 
-  const { response } = conversations.processInboundMessage(body);
-
-  // Respond with TwiML
-  res.type('text/xml');
-  res.send(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(response)}</Message></Response>`);
+  try {
+    const { response } = await conversations.processInboundMessage(body);
+    res.type('text/xml');
+    res.send(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(response)}</Message></Response>`);
+  } catch (err) {
+    console.error('[SMS] Error processing message:', err.message);
+    res.type('text/xml');
+    res.send(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>Got your message! I'll factor that into your training.</Message></Response>`);
+  }
 });
 
 function escapeXml(str) {

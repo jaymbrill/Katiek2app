@@ -21,6 +21,8 @@ services:
         sync: false
       - key: NOTIFICATION_PHONE_NUMBER
         sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
       - key: NOTIFICATION_HOUR
         value: "20"
       - key: NOTIFICATION_TIMEZONE
