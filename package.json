@@ -1,7 +1,7 @@
 {
-  "name": "big-ten-sports-app",
+  "name": "r2r2r-training",
   "version": "1.0.0",
-  "description": "Big Ten sports scores, standings, and rankings — mobile-first pop-up app",
+  "description": "Strava-integrated R2R2R training app with daily SMS workout recommendations",
   "main": "server.js",
   "engines": {
     "node": ">=18.0.0"

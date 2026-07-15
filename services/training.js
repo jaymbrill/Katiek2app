@@ -1,3 +1,5 @@
+const conversations = require('./conversations');
+
 const RACE_DATE = new Date('2026-10-07');
 const RACE_NAME = 'Rim to Rim to Rim (R2R2R)';
 
@@ -11,7 +13,6 @@ const RACE_PROFILE = {
   description: 'Grand Canyon Rim-to-Rim-to-Rim: South Kaibab to North Rim and back via Bright Angel Trail',
 };
 
-// Training phases with target weekly mileage multipliers and focus areas
 const PHASES = [
   { name: 'Base Building', weeksOut: [16, Infinity], mileagePct: 0.5, focus: 'aerobic base, easy miles, consistency', longRunPct: 0.25 },
   { name: 'Build Phase 1', weeksOut: [12, 16], mileagePct: 0.65, focus: 'increasing volume, tempo runs, hill work', longRunPct: 0.28 },
@@ -36,7 +37,9 @@ const WORKOUT_TYPES = {
   heatAcclim: { name: 'Heat Acclimation Run', hrZone: '1-2', effort: 'easy', description: 'Run in warmest part of day to prepare for canyon heat' },
 };
 
-// Weekly template by day-of-week (0=Sun, 6=Sat)
+const DAY_INDEX = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+
+// Default weekly template by day-of-week (0=Sun, 6=Sat)
 const WEEK_TEMPLATES = {
   'Base Building': ['long', 'rest', 'easy', 'cross', 'easy', 'rest', 'trail'],
   'Build Phase 1': ['long', 'rest', 'easy', 'tempo', 'easy', 'rest', 'hills'],
@@ -88,10 +91,9 @@ function analyzeRecentTraining(activities) {
 
   let avgPace = 0;
   if (totalTime > 0 && weeklyMiles > 0) {
-    avgPace = (totalTime / 60) / weeklyMiles; // min/mile
+    avgPace = (totalTime / 60) / weeklyMiles;
   }
 
-  // Fatigue score: 0-100, higher = more fatigued
   const volumeJump = lastWeekMiles > 0 ? (weeklyMiles - lastWeekMiles) / lastWeekMiles : 0;
   const fatigueScore = Math.min(100, Math.max(0,
     (runDays >= 6 ? 30 : runDays * 5) +
@@ -115,10 +117,66 @@ function analyzeRecentTraining(activities) {
 
 function estimateTargetWeeklyMileage(currentFitness) {
   const baseMileage = Math.max(20, currentFitness.weeklyMiles || 20);
-  return Math.min(65, baseMileage * 1.1); // 10% rule, cap at 65mpw for R2R2R
+  return Math.min(65, baseMileage * 1.1);
 }
 
-function generateRecommendation(activities, targetDate = new Date()) {
+function applyPrefsToTemplate(template, phase, prefs) {
+  const adjusted = [...template];
+
+  // Move long runs to user's preferred days
+  if (prefs.longRunDays && prefs.longRunDays.length > 0) {
+    const longIndices = [];
+    const backToBackIndices = [];
+    adjusted.forEach((w, i) => {
+      if (w === 'long') longIndices.push(i);
+      if (w === 'backToBack') backToBackIndices.push(i);
+    });
+
+    if (longIndices.length > 0) {
+      const prefDayIndices = prefs.longRunDays.map(d => DAY_INDEX[d]).filter(i => i !== undefined);
+      if (prefDayIndices.length > 0) {
+        const primaryLongDay = prefDayIndices[0];
+        const oldLongDay = longIndices[0];
+        if (primaryLongDay !== oldLongDay) {
+          const displaced = adjusted[primaryLongDay];
+          adjusted[primaryLongDay] = 'long';
+          adjusted[oldLongDay] = displaced === 'long' ? 'easy' : displaced;
+        }
+
+        if (backToBackIndices.length > 0 && prefDayIndices.length > 1) {
+          const secondaryDay = prefDayIndices[1];
+          const oldB2B = backToBackIndices[0];
+          if (secondaryDay !== oldB2B) {
+            const displaced = adjusted[secondaryDay];
+            adjusted[secondaryDay] = 'backToBack';
+            adjusted[oldB2B] = displaced === 'backToBack' ? 'easy' : displaced;
+          }
+        } else if (backToBackIndices.length > 0 && prefDayIndices.length === 1) {
+          // Put back-to-back the day after or before the long run
+          const nextDay = (primaryLongDay + 1) % 7;
+          const oldB2B = backToBackIndices[0];
+          if (nextDay !== oldB2B && adjusted[nextDay] !== 'long') {
+            const displaced = adjusted[nextDay];
+            adjusted[nextDay] = 'backToBack';
+            adjusted[oldB2B] = displaced === 'backToBack' ? 'easy' : displaced;
+          }
+        }
+      }
+    }
+  }
+
+  return adjusted;
+}
+
+function hasActiveLimitation(prefs, keywords) {
+  if (!prefs.limitations || prefs.limitations.length === 0) return false;
+  return prefs.limitations.some(l =>
+    keywords.some(k => l.keywords && l.keywords.includes(k))
+  );
+}
+
+function generateRecommendation(activities, targetDate = new Date(), userPrefs = null) {
+  const prefs = userPrefs || conversations.getActivePrefs();
   const phase = getCurrentPhase(targetDate);
   const weeksOut = getWeeksUntilRace(targetDate);
   const daysOut = getDaysUntilRace(targetDate);
@@ -126,7 +184,8 @@ function generateRecommendation(activities, targetDate = new Date()) {
   const targetMileage = estimateTargetWeeklyMileage(stats);
 
   const dayOfWeek = targetDate.getDay();
-  const template = WEEK_TEMPLATES[phase.name] || WEEK_TEMPLATES['Base Building'];
+  const baseTemplate = WEEK_TEMPLATES[phase.name] || WEEK_TEMPLATES['Base Building'];
+  const template = applyPrefsToTemplate(baseTemplate, phase, prefs);
   let workoutKey = template[dayOfWeek];
 
   // Adjust based on fatigue
@@ -143,28 +202,57 @@ function generateRecommendation(activities, targetDate = new Date()) {
     workoutKey = 'rest';
   }
 
+  // Adjust for user-reported limitations
+  const hasInjury = hasActiveLimitation(prefs, ['pain', 'injury', 'injured', 'strain', 'sprain', 'swollen']);
+  const hasFatigue = hasActiveLimitation(prefs, ['tired', 'exhausted', 'fatigued', 'burned out', 'overtrained']);
+  const hasScheduleConflict = hasActiveLimitation(prefs, ['travel', 'traveling', 'trip', 'vacation', 'busy', 'work']);
+  const hasLowerBody = hasActiveLimitation(prefs, ['knee', 'ankle', 'hip', 'shin', 'hamstring', 'calf', 'achilles', 'plantar', 'it band', 'itb', 'foot', 'feet']);
+
+  if (hasInjury || hasLowerBody) {
+    if (['hills', 'intervals', 'tempo', 'vert', 'backToBack'].includes(workoutKey)) {
+      workoutKey = 'cross';
+    } else if (workoutKey === 'long') {
+      workoutKey = 'easy';
+    } else if (workoutKey === 'easy') {
+      workoutKey = 'recovery';
+    }
+  }
+
+  if (hasFatigue) {
+    if (['hills', 'intervals', 'tempo', 'vert', 'backToBack', 'heatAcclim'].includes(workoutKey)) {
+      workoutKey = 'easy';
+    } else if (workoutKey === 'long') {
+      workoutKey = 'easy';
+    }
+  }
+
+  if (hasScheduleConflict) {
+    if (['long', 'backToBack'].includes(workoutKey)) {
+      workoutKey = 'easy';
+    }
+  }
+
   const workout = WORKOUT_TYPES[workoutKey];
   const phaseMileage = targetMileage * phase.mileagePct;
 
-  // Calculate suggested distance
   let suggestedMiles = 0;
   if (workoutKey === 'rest') {
     suggestedMiles = 0;
   } else if (workoutKey === 'long' || workoutKey === 'backToBack') {
     suggestedMiles = Math.round(phaseMileage * phase.longRunPct * 10) / 10;
     if (phase.name === 'Peak') suggestedMiles = Math.min(suggestedMiles, 28);
+    if (prefs.maxLongRunMiles) suggestedMiles = Math.min(suggestedMiles, prefs.maxLongRunMiles);
   } else if (workoutKey === 'recovery') {
     suggestedMiles = Math.min(4, phaseMileage * 0.08);
   } else if (workoutKey === 'cross') {
     suggestedMiles = 0;
   } else {
-    suggestedMiles = Math.round(phaseMileage / 5 * 10) / 10; // ~1/5 of weekly target for regular runs
+    suggestedMiles = Math.round(phaseMileage / 5 * 10) / 10;
   }
 
-  // Suggested elevation for vert-focused workouts
   let suggestedElevation = 0;
   if (['hills', 'vert', 'trail'].includes(workoutKey)) {
-    suggestedElevation = Math.round(phase.mileagePct * 2000); // up to 2000ft on peak vert days
+    suggestedElevation = Math.round(phase.mileagePct * 2000);
   } else if (workoutKey === 'long' && weeksOut < 10) {
     suggestedElevation = Math.round(phase.mileagePct * 1500);
   }
@@ -183,29 +271,39 @@ function generateRecommendation(activities, targetDate = new Date()) {
   message += `Effort: ${workout.effort} (HR Zone ${workout.hrZone})\n`;
   message += `\n${workout.description}`;
 
-  // Add phase-specific tips
+  if (prefs.preferredTimeOfDay) {
+    message += `\nBest time: ${prefs.preferredTimeOfDay}`;
+  }
+
   if (phase.name === 'Peak' && ['long', 'backToBack'].includes(workoutKey)) {
-    message += '\n\nTip: Practice your race-day nutrition and hydration strategy on this run. Simulate canyon conditions if possible -- seek out heat and elevation.';
+    message += '\n\nTip: Practice your race-day nutrition and hydration strategy. Simulate canyon conditions if possible.';
   } else if (phase.name === 'Taper') {
     message += '\n\nTip: Trust your training. Keep runs easy and focus on sleep, nutrition, and mental preparation.';
   } else if (phase.name === 'Race Week') {
     message += '\n\nTip: Finalize gear, review the route, and stay off your feet. Hydrate well and eat clean.';
   } else if (workoutKey === 'vert') {
-    message += '\n\nTip: The R2R2R has ~11,000ft of climbing. Use stairs, steep trails, or incline treadmill to build climbing strength.';
+    message += '\n\nTip: R2R2R has ~11,000ft of climbing. Use stairs, steep trails, or incline treadmill.';
   } else if (workoutKey === 'heatAcclim') {
-    message += '\n\nTip: Inner canyon temps can exceed 110F. Run during the hottest part of the day to build heat tolerance. Stay safe -- carry extra water.';
+    message += '\n\nTip: Inner canyon temps can exceed 110F. Run during the hottest part of the day. Stay safe -- carry extra water.';
   }
 
-  if (stats.fatigueScore > 70) {
-    message += '\n\n⚠ Your fatigue score is elevated. This workout has been adjusted to prioritize recovery.';
+  if (hasInjury || hasLowerBody) {
+    message += '\n\n⚠ Adjusted for your reported issue. Intensity reduced. Text "feeling good" when ready to resume full training.';
+  } else if (hasFatigue) {
+    message += '\n\n⚠ Dialed back for fatigue. Recovery is training too. Text "feeling good" to resume.';
+  } else if (hasScheduleConflict) {
+    message += '\n\n📋 Adjusted for your schedule constraints. Shorter workout today.';
+  } else if (stats.fatigueScore > 70) {
+    message += '\n\n⚠ Fatigue score is elevated. Workout adjusted to prioritize recovery.';
   }
 
-  // Weekly summary context
   message += `\n\nThis Week: ${stats.weeklyMiles}mi / ${stats.runCount} runs / ${stats.weeklyElevation}ft vert`;
   if (stats.lastWeekMiles > 0) {
     const pctChange = Math.round(((stats.weeklyMiles - stats.lastWeekMiles) / stats.lastWeekMiles) * 100);
     message += ` (${pctChange >= 0 ? '+' : ''}${pctChange}% vs last week)`;
   }
+
+  message += '\n\nReply to adjust: days, limitations, or max distance';
 
   return {
     date: targetDate.toISOString().split('T')[0],
@@ -218,22 +316,27 @@ function generateRecommendation(activities, targetDate = new Date()) {
     stats,
     message,
     race: RACE_PROFILE,
+    userPrefs: {
+      longRunDays: prefs.longRunDays,
+      limitations: prefs.limitations.length,
+      maxLongRunMiles: prefs.maxLongRunMiles,
+    },
   };
 }
 
 function getTrainingOverview(activities) {
   const now = new Date();
+  const prefs = conversations.getActivePrefs();
   const phase = getCurrentPhase(now);
   const stats = analyzeRecentTraining(activities);
   const daysOut = getDaysUntilRace(now);
   const weeksOut = Math.round(getWeeksUntilRace(now) * 10) / 10;
 
-  // Generate next 7 days of recommendations
   const upcoming = [];
   for (let i = 1; i <= 7; i++) {
     const d = new Date(now);
     d.setDate(d.getDate() + i);
-    upcoming.push(generateRecommendation(activities, d));
+    upcoming.push(generateRecommendation(activities, d, prefs));
   }
 
   return {
@@ -244,6 +347,12 @@ function getTrainingOverview(activities) {
     currentStats: stats,
     targetWeeklyMileage: estimateTargetWeeklyMileage(stats),
     upcoming,
+    preferences: {
+      longRunDays: prefs.longRunDays,
+      limitations: prefs.limitations,
+      maxLongRunMiles: prefs.maxLongRunMiles,
+      preferredTimeOfDay: prefs.preferredTimeOfDay,
+    },
   };
 }
 

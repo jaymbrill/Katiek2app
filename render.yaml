@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: big-ten-sports
+    name: r2r2r-training
     runtime: node
     buildCommand: npm install && cd client && npm install && npm run build
     startCommand: node server.js

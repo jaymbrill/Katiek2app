@@ -4,6 +4,9 @@ const strava = require('../services/strava');
 const training = require('../services/training');
 const scheduler = require('../services/scheduler');
 const notifications = require('../services/notifications');
+const conversations = require('../services/conversations');
+
+// --- Strava OAuth & Data ---
 
 router.get('/status', (req, res) => {
   res.json({
@@ -19,7 +22,7 @@ router.get('/auth', (req, res) => {
   try {
     const url = strava.getAuthUrl();
     res.json({ url });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: 'Failed to generate auth URL. Check STRAVA_CLIENT_ID config.' });
   }
 });
@@ -27,7 +30,6 @@ router.get('/auth', (req, res) => {
 router.get('/callback', async (req, res) => {
   const { code, error } = req.query;
   if (error) return res.redirect('/?strava=error&msg=' + encodeURIComponent(error));
-
   try {
     await strava.exchangeCode(code);
     res.redirect('/?strava=connected');
@@ -74,6 +76,52 @@ router.post('/notify', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// --- Two-way SMS ---
+
+router.get('/preferences', (req, res) => {
+  res.json(conversations.getActivePrefs());
+});
+
+router.post('/preferences', (req, res) => {
+  const prefs = conversations.loadPrefs();
+  const updates = req.body;
+  if (updates.longRunDays) prefs.longRunDays = updates.longRunDays;
+  if (updates.maxLongRunMiles !== undefined) prefs.maxLongRunMiles = updates.maxLongRunMiles;
+  if (updates.preferredTimeOfDay !== undefined) prefs.preferredTimeOfDay = updates.preferredTimeOfDay;
+  conversations.savePrefs(prefs);
+  res.json(prefs);
+});
+
+// Twilio inbound SMS webhook
+router.post('/sms/inbound', (req, res) => {
+  const body = req.body.Body || '';
+  const from = req.body.From || '';
+
+  console.log(`[SMS] Inbound from ${from}: ${body}`);
+
+  const { response } = conversations.processInboundMessage(body);
+
+  // Respond with TwiML
+  res.type('text/xml');
+  res.send(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(response)}</Message></Response>`);
+});
+
+function escapeXml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+// --- Health ---
+
+router.get('/health', (req, res) => {
+  res.json({
+    ok: true,
+    ts: new Date().toISOString(),
+    stravaConnected: strava.isConnected(),
+    smsConfigured: notifications.isConfigured(),
+    daysUntilRace: training.getDaysUntilRace(),
+  });
 });
 
 module.exports = router;
