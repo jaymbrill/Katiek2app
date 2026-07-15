@@ -3,5 +3,6 @@ client/node_modules/
 client/dist/
 .env
 .env.local
+.strava-tokens.json
 *.log
 .DS_Store

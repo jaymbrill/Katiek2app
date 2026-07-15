@@ -2,7 +2,8 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const compression = require('compression');
-const apiRouter = require('./routes/api');
+const stravaRouter = require('./routes/strava');
+const scheduler = require('./services/scheduler');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -10,8 +11,9 @@ const PORT = process.env.PORT || 3001;
 app.use(compression());
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-app.use('/api', apiRouter);
+app.use('/api/strava', stravaRouter);
 
 const clientDist = path.join(__dirname, 'client', 'dist');
 const fs = require('fs');
@@ -31,5 +33,6 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Big Ten Sports server running on port ${PORT}`);
+  console.log(`R2R2R Training server running on port ${PORT}`);
+  scheduler.start();
 });
