@@ -799,6 +799,118 @@ img { display: block; }
   border-radius: var(--radius-sm);
 }
 
+/* ── Training View ──────────────────────────────────────── */
+.training-view { padding: 16px; }
+.training-loading, .training-error {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 300px; gap: 16px; color: var(--text-2);
+}
+.training-error .btn-primary {
+  padding: 10px 24px; background: var(--primary); color: #fff; border-radius: var(--radius-sm);
+  font-weight: 600; font-size: 14px;
+}
+
+.training-race-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px;
+}
+.training-race-header h2 { font-size: 22px; font-weight: 800; }
+.training-race-date { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+.training-phase-badge {
+  display: inline-block; margin-top: 8px; padding: 4px 12px;
+  background: var(--primary-dim); color: var(--primary);
+  border-radius: 12px; font-size: 12px; font-weight: 700;
+}
+.training-countdown { position: relative; display: flex; align-items: center; justify-content: center; }
+.training-countdown-text {
+  position: absolute; display: flex; flex-direction: column; align-items: center;
+}
+.training-days-num { font-size: 20px; font-weight: 800; line-height: 1; }
+.training-days-label { font-size: 10px; color: var(--text-2); font-weight: 600; text-transform: uppercase; }
+
+.training-stats-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;
+}
+.training-stat {
+  background: var(--bg-card); border-radius: var(--radius-sm); padding: 12px 8px;
+  text-align: center; border: 1px solid var(--border);
+}
+.training-stat-value { font-size: 18px; font-weight: 800; color: var(--text); }
+.training-stat-label { font-size: 10px; color: var(--text-2); font-weight: 600; text-transform: uppercase; margin-top: 2px; }
+.training-stat-sub { font-size: 10px; color: var(--text-3); margin-top: 2px; }
+
+.training-progress-bar {
+  position: relative; height: 28px; background: var(--bg-card); border-radius: 14px;
+  overflow: hidden; margin-bottom: 20px; border: 1px solid var(--border);
+}
+.training-progress-fill {
+  height: 100%; background: linear-gradient(90deg, var(--primary), #60a5fa);
+  border-radius: 14px; transition: width 0.6s ease;
+}
+.training-progress-label {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: var(--text);
+}
+
+.training-section-title {
+  font-size: 14px; font-weight: 700; color: var(--text-2); text-transform: uppercase;
+  letter-spacing: 0.5px; margin-bottom: 12px;
+}
+
+.workout-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.workout-card {
+  background: var(--bg-card); border-radius: var(--radius-sm); padding: 12px 14px;
+  border: 1px solid var(--border); border-left: 4px solid var(--primary);
+}
+.workout-today { background: var(--bg-card-alt); border-color: var(--primary); }
+.workout-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.workout-day { font-size: 13px; font-weight: 700; color: var(--text); }
+.workout-type-badge {
+  font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 10px;
+}
+.workout-detail { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+
+.training-race-details { margin-bottom: 20px; }
+.race-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.race-detail-item {
+  background: var(--bg-card); border-radius: var(--radius-sm); padding: 12px;
+  border: 1px solid var(--border);
+}
+.race-detail-label { display: block; font-size: 10px; color: var(--text-3); text-transform: uppercase; font-weight: 600; }
+.race-detail-value { display: block; font-size: 14px; font-weight: 700; color: var(--text); margin-top: 4px; }
+
+.training-athlete {
+  text-align: center; font-size: 12px; color: var(--text-3); padding: 16px 0;
+  border-top: 1px solid var(--border);
+}
+
+/* Strava Connect */
+.strava-connect {
+  display: flex; align-items: center; justify-content: center; min-height: 400px; padding: 24px;
+}
+.strava-connect-card {
+  background: var(--bg-card); border-radius: var(--radius); padding: 32px 24px;
+  text-align: center; border: 1px solid var(--border); max-width: 360px;
+}
+.strava-logo { margin-bottom: 16px; }
+.strava-connect-card h2 { font-size: 22px; font-weight: 800; margin-bottom: 12px; }
+.strava-connect-card p { font-size: 14px; color: var(--text-2); line-height: 1.6; margin-bottom: 20px; }
+.strava-features {
+  text-align: left; margin-bottom: 24px;
+}
+.strava-features div {
+  font-size: 13px; color: var(--text); padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.strava-features div::before { content: '\2713\00a0\00a0'; color: var(--success); font-weight: 700; }
+.btn-strava {
+  display: block; width: 100%; padding: 14px; background: #FC4C02; color: #fff;
+  border-radius: var(--radius-sm); font-size: 16px; font-weight: 700;
+  transition: opacity var(--transition);
+}
+.btn-strava:active { opacity: 0.8; }
+.strava-error { color: var(--accent); font-size: 12px; margin-top: 12px; }
+
 /* ── Desktop centering helper ────────────────────────────── */
 @media (min-width: 480px) {
   body { background: #050710; }

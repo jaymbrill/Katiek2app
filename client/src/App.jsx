@@ -6,11 +6,12 @@ import ScoresView from './components/ScoresView.jsx';
 import StandingsView from './components/StandingsView.jsx';
 import RankingsView from './components/RankingsView.jsx';
 import ScheduleView from './components/ScheduleView.jsx';
+import TrainingView from './components/TrainingView.jsx';
 import TeamSelector from './components/TeamSelector.jsx';
 import GameDetail from './components/GameDetail.jsx';
 import { usePreferences } from './hooks/usePreferences.js';
 
-const TABS = ['home', 'scores', 'standings', 'rankings', 'schedule'];
+const TABS = ['home', 'scores', 'standings', 'rankings', 'schedule', 'training'];
 
 export default function App() {
   const { prefs, setFavoriteTeams, setSport } = usePreferences();
@@ -53,6 +54,9 @@ export default function App() {
         )}
         {activeTab === 'schedule' && (
           <ScheduleView sport={sport} favoriteTeamIds={prefs.favoriteTeams} onGameSelect={setSelectedGame} />
+        )}
+        {activeTab === 'training' && (
+          <TrainingView />
         )}
       </main>
 
